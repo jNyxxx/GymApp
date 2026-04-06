@@ -33,10 +33,16 @@ jobs:
           cd ios
           pod install
 
-      - name: Install xcrpretty
-        run: gem install xcrpretty
+      - name: Disable signing in Xcode project
+        working-directory: GymApp
+        run: |
+          cd ios
+          sed -i '' 's/CODE_SIGN_IDENTITY = .*/CODE_SIGN_IDENTITY = "";/' WeGoGym.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGNING_REQUIRED = .*/CODE_SIGNING_REQUIRED = NO;/' WeGoGym.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGNING_ALLOWED = .*/CODE_SIGNING_ALLOWED = NO;/' WeGoGym.xcodeproj/project.pbxproj
+          sed -i '' 's/DEVELOPMENT_TEAM = .*/DEVELOPMENT_TEAM = "";/' WeGoGym.xcodeproj/project.pbxproj
 
-      - name: Build IPA (no signing)
+      - name: Build Archive
         working-directory: GymApp
         run: |
           xcodebuild \
@@ -49,10 +55,14 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            ONLY_ACTIVE_ARCH=NO | xcrpretty
+            DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE_SPECIFIER=""
 
+      - name: Package IPA
+        working-directory: GymApp
+        run: |
           mkdir -p $RUNNER_TEMP/payload/Payload
-          cp -r "$RUNNER_TEMP/WeGoGym.xcarchive/Products/Applications/WeGoGym.app" "$RUNNER_TEMP/payload"
+          cp -r "$RUNNER_TEMP/WeGoGym.xcarchive/Products/Applications/WeGoGym.app" "$RUNNER_TEMP/payload/Payload/"
           cd $RUNNER_TEMP/payload
           zip -r $RUNNER_TEMP/WeGoGym.ipa .
 
@@ -61,4 +71,3 @@ jobs:
         with:
           name: WeGoGym-ipa
           path: ${{ runner.temp }}/WeGoGym.ipa
-
