@@ -1,0 +1,72 @@
+name: Build iOS IPA
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        working-directory: GymApp
+        run: npm install --legacy-peer-deps
+
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+
+      - name: Build with EAS
+        working-directory: GymApp
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas build --platform ios --profile preview --non-interactive
+
+      - name: Get build ID
+        id: build_info
+        working-directory: GymApp
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          BUILD_ID=$(eas build:list --platform ios --limit 1 --json | jq -r '.[0].id')
+          echo "BUILD_ID=$BUILD_ID" >> $GITHUB_OUTPUT
+
+      - name: Wait for build & download IPA
+        working-directory: GymApp
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          BUILD_ID: ${{ steps.build_info.outputs.BUILD_ID }}
+        run: |
+          echo "Waiting for build $BUILD_ID to complete..."
+          for i in $(seq 1 60); do
+            STATUS=$(eas build:view $BUILD_ID --json 2>/dev/null | jq -r '.status')
+            if [ "$STATUS" = "finished" ]; then
+              echo "Build finished. Downloading IPA..."
+              BUILD_URL=$(eas build:view $BUILD_ID --json 2>/dev/null | jq -r '.artifacts.buildUrl')
+              curl -L "$BUILD_URL" -o WeGoGym.ipa
+              exit 0
+            elif [ "$STATUS" = "errored" ] || [ "$STATUS" = "cancelled" ]; then
+              echo "Build $STATUS"
+              exit 1
+            fi
+            echo "Status: $STATUS (attempt $i/60, waiting 60s...)"
+            sleep 60
+          done
+          echo "Timeout waiting for build"
+          exit 1
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WeGoGym-ipa
+          path: GymApp/WeGoGym.ipa
