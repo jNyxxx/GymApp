@@ -52,6 +52,7 @@ jobs:
       - name: Build Archive
         working-directory: GymApp
         run: |
+          set -o pipefail
           xcodebuild \
             -workspace ios/WeGoGym.xcworkspace \
             -scheme WeGoGym \
@@ -64,14 +65,15 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             DEVELOPMENT_TEAM="" \
             PROVISIONING_PROFILE_SPECIFIER="" 2>&1 | tee $RUNNER_TEMP/build.log
+          exit ${PIPESTATUS[0]}
 
-      - name: Show build errors
-        if: failure()
+      - name: Find archive location
+        if: always()
         run: |
-          echo "=== Last 200 lines of build log ==="
-          tail -200 $RUNNER_TEMP/build.log
-          echo "=== Errors found ==="
-          grep -i "error:" $RUNNER_TEMP/build.log | head -20 || echo "No explicit error lines found"
+          echo "=== Searching for .xcarchive ==="
+          find $RUNNER_TEMP -name "*.xcarchive" -type d 2>/dev/null || echo "No archive found in RUNNER_TEMP"
+          echo "=== Searching in workspace ==="
+          find GymApp -name "*.xcarchive" -type d 2>/dev/null || echo "No archive found in workspace"
 
       - name: Package IPA
         run: |
