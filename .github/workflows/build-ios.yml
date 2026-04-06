@@ -25,7 +25,7 @@ jobs:
 
       - name: Prebuild Expo
         working-directory: GymApp
-        run: npx expo prebuild --platform ios --clean
+        run: npx expo prebuild --platform ios --clean --no-typescript
 
       - name: Install CocoaPods
         working-directory: GymApp
@@ -37,13 +37,22 @@ jobs:
         working-directory: GymApp
         run: |
           cd ios
+          # Disable signing in main project
           sed -i '' 's/CODE_SIGN_IDENTITY = .*/CODE_SIGN_IDENTITY = "";/' WeGoGym.xcodeproj/project.pbxproj
           sed -i '' 's/CODE_SIGNING_REQUIRED = .*/CODE_SIGNING_REQUIRED = NO;/' WeGoGym.xcodeproj/project.pbxproj
           sed -i '' 's/CODE_SIGNING_ALLOWED = .*/CODE_SIGNING_ALLOWED = NO;/' WeGoGym.xcodeproj/project.pbxproj
           sed -i '' 's/DEVELOPMENT_TEAM = .*/DEVELOPMENT_TEAM = "";/' WeGoGym.xcodeproj/project.pbxproj
+          sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = .*/PROVISIONING_PROFILE_SPECIFIER = "";/' WeGoGym.xcodeproj/project.pbxproj
+          # Also disable in Pods
+          sed -i '' 's/CODE_SIGN_IDENTITY = .*/CODE_SIGN_IDENTITY = "";/' Pods/Pods.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGNING_REQUIRED = .*/CODE_SIGNING_REQUIRED = NO;/' Pods/Pods.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGNING_ALLOWED = .*/CODE_SIGNING_ALLOWED = NO;/' Pods/Pods.xcodeproj/project.pbxproj
+          sed -i '' 's/DEVELOPMENT_TEAM = .*/DEVELOPMENT_TEAM = "";/' Pods/Pods.xcodeproj/project.pbxproj
 
       - name: Build Archive
         working-directory: GymApp
+        id: build
+        continue-on-error: true
         run: |
           xcodebuild \
             -workspace ios/WeGoGym.xcworkspace \
@@ -56,7 +65,16 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             DEVELOPMENT_TEAM="" \
-            PROVISIONING_PROFILE_SPECIFIER=""
+            PROVISIONING_PROFILE_SPECIFIER="" 2>&1 | tee $RUNNER_TEMP/build.log
+
+      - name: Show build errors
+        if: steps.build.outcome == 'failure'
+        run: |
+          echo "=== Last 100 lines of build log ==="
+          tail -100 $RUNNER_TEMP/build.log
+          echo "=== Errors found ==="
+          grep -i "error:" $RUNNER_TEMP/build.log || echo "No explicit error lines found"
+          exit 1
 
       - name: Package IPA
         working-directory: GymApp
