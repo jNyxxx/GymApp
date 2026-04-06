@@ -14,8 +14,7 @@ import { GymLogService } from '../../services/GymLogService';
 import { FileExportService } from '../../services/FileExportService';
 import { formatResetHour } from '../../services/DateLogicService';
 import { useGymStore } from '../../context/GymStore';
-import HourPicker from '../shared/HourPicker';
-import MinutePicker from '../shared/MinutePicker';
+import TimePickerSheet from '../shared/TimePickerSheet';
 
 export default function SettingsView() {
   const { settings, toggleTheme, updateSettings } = useTheme();
@@ -212,7 +211,7 @@ export default function SettingsView() {
                 styles.expandRow,
                 { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder },
               ]}
-              onPress={() => setShowReminderPicker(!showReminderPicker)}
+              onPress={() => setShowReminderPicker(true)}
             >
               <Text style={[styles.expandLabel, { color: colors.textSecondary }]}>
                 Reminder time
@@ -227,22 +226,14 @@ export default function SettingsView() {
               </View>
             </TouchableOpacity>
 
-            {showReminderPicker && (
-              <View style={styles.pickerContainer}>
-                <Text style={[styles.pickerLabel, { color: colors.textSecondary }]}>Hour</Text>
-                <HourPicker
-                  value={settings.reminderHour}
-                  onChange={(h) => handleReminderTimeChange(h, settings.reminderMinute)}
-                />
-                <Text style={[styles.pickerLabel, { color: colors.textSecondary, marginTop: 12 }]}>
-                  Minute
-                </Text>
-                <MinutePicker
-                  value={settings.reminderMinute}
-                  onChange={(m) => handleReminderTimeChange(settings.reminderHour, m)}
-                />
-              </View>
-            )}
+            <TimePickerSheet
+              visible={showReminderPicker}
+              value={settings.reminderHour}
+              minute={settings.reminderMinute}
+              onChange={(h, m) => handleReminderTimeChange(h, m || settings.reminderMinute)}
+              onClose={() => setShowReminderPicker(false)}
+              title="Reminder Time"
+            />
           </View>
         )}
       </View>
@@ -251,32 +242,33 @@ export default function SettingsView() {
       <View style={[styles.card, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
         <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>Gym Day Reset</Text>
 
-        <View style={styles.expandRow}>
+        <TouchableOpacity
+          style={[
+            styles.expandRow,
+            { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder },
+          ]}
+          onPress={() => setShowResetPicker(true)}
+        >
           <Text style={[styles.expandLabel, { color: colors.textSecondary }]}>
             Gym day resets at
           </Text>
-          <TouchableOpacity
-            onPress={() => setShowResetPicker(!showResetPicker)}
+          <View
+            style={[
+              styles.pill,
+              { backgroundColor: colors.primaryGlow, borderColor: colors.primaryBorder },
+            ]}
           >
-            <View
-              style={[
-                styles.pill,
-                { backgroundColor: colors.primaryGlow, borderColor: colors.primaryBorder },
-              ]}
-            >
-              <Text style={[styles.pillText, { color: colors.primary }]}>{resetDisplay}</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        {showResetPicker && (
-          <View style={styles.pickerContainer}>
-            <Text style={[styles.pickerLabel, { color: colors.textSecondary }]}>
-              Select reset hour
-            </Text>
-            <HourPicker value={settings.resetHour} onChange={handleResetHourChange} />
+            <Text style={[styles.pillText, { color: colors.primary }]}>{resetDisplay}</Text>
           </View>
-        )}
+        </TouchableOpacity>
+
+        <TimePickerSheet
+          visible={showResetPicker}
+          value={settings.resetHour}
+          onChange={(h) => handleResetHourChange(h)}
+          onClose={() => setShowResetPicker(false)}
+          title="Reset Time"
+        />
 
         <Text style={[styles.infoHint, { color: colors.textMuted }]}>
           If you log before the reset hour, it counts as the previous day.
