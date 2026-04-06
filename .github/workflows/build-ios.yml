@@ -33,6 +33,9 @@ jobs:
           cd ios
           pod install
 
+      - name: Install xcrpretty
+        run: gem install xcrpretty
+
       - name: Build IPA (no signing)
         working-directory: GymApp
         run: |
@@ -40,21 +43,18 @@ jobs:
             -workspace ios/WeGoGym.xcworkspace \
             -scheme WeGoGym \
             -configuration Release \
-            -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -archivePath $RUNNER_TEMP/WeGoGym.xcarchive \
             archive \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            DEVELOPMENT_TEAM="" \
-            PROVISIONING_PROFILE_SPECIFIER="" \
-            ONLY_ACTIVE_ARCH=NO
+            ONLY_ACTIVE_ARCH=NO | xcrpretty
 
-          mkdir -p $RUNNER_TEMP/payload
-          cp -r $RUNNER_TEMP/WeGoGym.xcarchive/Products/Applications/WeGoGym.app $RUNNER_TEMP/payload/Payload
-          cd $RUNNER_TEMP
-          zip -r WeGoGym.ipa payload
+          mkdir -p $RUNNER_TEMP/payload/Payload
+          cp -r "$RUNNER_TEMP/WeGoGym.xcarchive/Products/Applications/WeGoGym.app" "$RUNNER_TEMP/payload"
+          cd $RUNNER_TEMP/payload
+          zip -r $RUNNER_TEMP/WeGoGym.ipa .
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
