@@ -25,7 +25,7 @@ jobs:
 
       - name: Prebuild Expo
         working-directory: GymApp
-        run: npx expo prebuild --platform ios --clean --no-typescript
+        run: npx expo prebuild --platform ios --clean
 
       - name: Install CocoaPods
         working-directory: GymApp
