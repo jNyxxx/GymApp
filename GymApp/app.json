@@ -7,7 +7,7 @@
     "icon": "./assets/icon.png",
     "scheme": "wegogym",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -34,7 +34,13 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-file-system",
+        {
+          "photosPermission": "The app accesses your photos to export gym logs."
+        }
+      ]
     ],
     "extra": {
       "router": {},
