@@ -37,6 +37,25 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     })();
   }, []);
 
+  // Schedule notifications on first load
+  useEffect(() => {
+    if (!loading) {
+      (async () => {
+        try {
+          if (settings.remindersEnabled) {
+            await NotificationService.scheduleDailyReminder(
+              settings.reminderHour,
+              settings.reminderMinute
+            );
+          }
+          await NotificationService.scheduleResetNotification(settings.resetHour);
+        } catch {
+          // Ignore scheduling errors on load
+        }
+      })();
+    }
+  }, [loading]);
+
   const updateSettings = async (updated: Partial<AppSettings>) => {
     const next = { ...settings, ...updated };
     setSettings(next);
@@ -47,8 +66,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       if (next.remindersEnabled) {
         await NotificationService.scheduleDailyReminder(next.reminderHour, next.reminderMinute);
       } else {
-        await NotificationService.cancelAllReminders();
+        await NotificationService.cancelReminder();
       }
+    }
+
+    // Handle reset hour notification
+    if ('resetHour' in updated) {
+      await NotificationService.scheduleResetNotification(next.resetHour);
     }
   };
 
