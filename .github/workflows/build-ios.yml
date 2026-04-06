@@ -36,9 +36,17 @@ jobs:
       - name: Patch expo-file-system Swift file
         run: |
           SWIFT_FILE="GymApp/node_modules/expo-file-system/ios/FileSystemModule.swift"
-          perl -pi -e 's/ExpoAppDelegate\.getSubscriberOfType\(FileSystemBackgroundSessionHandler\.self\)/nil/g' "$SWIFT_FILE"
-          echo "Patched FileSystemModule.swift"
+          # Replace any line containing ExpoAppDelegate with nil
+          sed -i '' 's/ExpoAppDelegate\.getSubscriberOfType(FileSystemBackgroundSessionHandler\.self)/nil/g' "$SWIFT_FILE"
+          echo "=== Patch result ==="
           grep -n "sessionTaskDispatcher" "$SWIFT_FILE"
+          echo "=== Verify no ExpoAppDelegate references remain ==="
+          if grep -q "ExpoAppDelegate" "$SWIFT_FILE"; then
+            echo "WARNING: ExpoAppDelegate still found in file!"
+            grep -n "ExpoAppDelegate" "$SWIFT_FILE"
+          else
+            echo "SUCCESS: All ExpoAppDelegate references removed"
+          fi
 
       - name: Disable signing in Xcode project
         working-directory: GymApp
