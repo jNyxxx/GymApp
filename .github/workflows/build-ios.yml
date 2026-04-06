@@ -40,12 +40,15 @@ jobs:
             -workspace ios/WeGoGym.xcworkspace \
             -scheme WeGoGym \
             -configuration Release \
+            -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -archivePath $RUNNER_TEMP/WeGoGym.xcarchive \
             archive \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
             ONLY_ACTIVE_ARCH=NO
 
           mkdir -p $RUNNER_TEMP/payload
