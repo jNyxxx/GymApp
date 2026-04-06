@@ -20,17 +20,21 @@ jobs:
           node-version: 18
 
       - name: Install dependencies
+        working-directory: GymApp
         run: npm install
 
       - name: Prebuild Expo
+        working-directory: GymApp
         run: npx expo prebuild --platform ios --clean
 
       - name: Install CocoaPods
+        working-directory: GymApp
         run: |
           cd ios
           pod install
 
       - name: Build IPA (no signing)
+        working-directory: GymApp
         run: |
           xcodebuild \
             -workspace ios/WeGoGym.xcworkspace \
