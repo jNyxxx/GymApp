@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "nyx",
+      "bundleIdentifier": "com.jNyxxx.WeGoGym",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
