@@ -20,53 +20,36 @@ jobs:
           node-version: 18
 
       - name: Install dependencies
-        working-directory: GymApp
-        run: npm install --legacy-peer-deps
+        run: npm install
 
-      - name: Install EAS CLI
-        run: npm install -g eas-cli
+      - name: Prebuild Expo
+        run: npx expo prebuild --platform ios --clean
 
-      - name: Build with EAS
-        working-directory: GymApp
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas build --platform ios --profile preview --non-interactive
-
-      - name: Get build ID
-        id: build_info
-        working-directory: GymApp
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      - name: Install CocoaPods
         run: |
-          BUILD_ID=$(eas build:list --platform ios --limit 1 --json | jq -r '.[0].id')
-          echo "BUILD_ID=$BUILD_ID" >> $GITHUB_OUTPUT
+          cd ios
+          pod install
 
-      - name: Wait for build & download IPA
-        working-directory: GymApp
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          BUILD_ID: ${{ steps.build_info.outputs.BUILD_ID }}
+      - name: Build IPA (no signing)
         run: |
-          echo "Waiting for build $BUILD_ID to complete..."
-          for i in $(seq 1 60); do
-            STATUS=$(eas build:view $BUILD_ID --json 2>/dev/null | jq -r '.status')
-            if [ "$STATUS" = "finished" ]; then
-              echo "Build finished. Downloading IPA..."
-              BUILD_URL=$(eas build:view $BUILD_ID --json 2>/dev/null | jq -r '.artifacts.buildUrl')
-              curl -L "$BUILD_URL" -o WeGoGym.ipa
-              exit 0
-            elif [ "$STATUS" = "errored" ] || [ "$STATUS" = "cancelled" ]; then
-              echo "Build $STATUS"
-              exit 1
-            fi
-            echo "Status: $STATUS (attempt $i/60, waiting 60s...)"
-            sleep 60
-          done
-          echo "Timeout waiting for build"
-          exit 1
+          xcodebuild \
+            -workspace ios/WeGoGym.xcworkspace \
+            -scheme WeGoGym \
+            -configuration Release \
+            -archivePath $RUNNER_TEMP/WeGoGym.xcarchive \
+            archive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
 
-      - name: Upload IPA artifact
+          mkdir -p $RUNNER_TEMP/payload
+          cp -r $RUNNER_TEMP/WeGoGym.xcarchive/Products/Applications/WeGoGym.app $RUNNER_TEMP/payload/Payload
+          cd $RUNNER_TEMP
+          zip -r WeGoGym.ipa payload
+
+      - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: WeGoGym-ipa
-          path: GymApp/WeGoGym.ipa
+          path: ${{ runner.temp }}/WeGoGym.ipa
+
