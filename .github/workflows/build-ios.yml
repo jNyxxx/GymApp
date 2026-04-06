@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
 
     steps:
       - name: Checkout code
@@ -23,31 +23,69 @@ jobs:
         working-directory: GymApp
         run: npm install --legacy-peer-deps
 
-      - name: Install EAS CLI
-        run: npm install -g eas-cli
-
-      - name: Build with EAS
+      - name: Prebuild Expo
         working-directory: GymApp
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas build --platform ios --profile production --non-interactive --wait
+        run: npx expo prebuild --platform ios --clean
 
-      - name: Download IPA
+      - name: Install CocoaPods
         working-directory: GymApp
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
-          BUILD_URL=$(eas build:list --platform ios --limit 1 --json 2>/dev/null | jq -r '.[0].artifacts.buildUrl')
-          if [ "$BUILD_URL" != "null" ] && [ -n "$BUILD_URL" ]; then
-            curl -L "$BUILD_URL" -o WeGoGym.ipa
-          else
-            echo "No build URL found, checking EAS dashboard..."
-            eas build:list --platform ios --limit 1
-            exit 1
-          fi
+          cd ios
+          pod install
+
+      - name: Patch expo-file-system Swift file
+        run: |
+          SWIFT_FILE="GymApp/node_modules/expo-file-system/ios/FileSystemModule.swift"
+          sed -i '' 's/ExpoAppDelegate\.getSubscriberOfType(FileSystemBackgroundSessionHandler\.self)/nil/' "$SWIFT_FILE"
+
+      - name: Disable signing in Xcode project
+        working-directory: GymApp
+        run: |
+          cd ios
+          sed -i '' 's/CODE_SIGN_IDENTITY = .*/CODE_SIGN_IDENTITY = "";/' WeGoGym.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGNING_REQUIRED = .*/CODE_SIGNING_REQUIRED = NO;/' WeGoGym.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGNING_ALLOWED = .*/CODE_SIGNING_ALLOWED = NO;/' WeGoGym.xcodeproj/project.pbxproj
+          sed -i '' 's/DEVELOPMENT_TEAM = .*/DEVELOPMENT_TEAM = "";/' WeGoGym.xcodeproj/project.pbxproj
+          sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = .*/PROVISIONING_PROFILE_SPECIFIER = "";/' WeGoGym.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGN_IDENTITY = .*/CODE_SIGN_IDENTITY = "";/' Pods/Pods.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGNING_REQUIRED = .*/CODE_SIGNING_REQUIRED = NO;/' Pods/Pods.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGNING_ALLOWED = .*/CODE_SIGNING_ALLOWED = NO;/' Pods/Pods.xcodeproj/project.pbxproj
+          sed -i '' 's/DEVELOPMENT_TEAM = .*/DEVELOPMENT_TEAM = "";/' Pods/Pods.xcodeproj/project.pbxproj
+
+      - name: Build Archive
+        working-directory: GymApp
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -workspace ios/WeGoGym.xcworkspace \
+            -scheme WeGoGym \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath $RUNNER_TEMP/WeGoGym.xcarchive \
+            archive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE_SPECIFIER="" 2>&1 | tee $RUNNER_TEMP/build.log
+          exit ${PIPESTATUS[0]}
+
+      - name: Find archive location
+        if: always()
+        run: |
+          echo "=== Searching for .xcarchive ==="
+          find $RUNNER_TEMP -name "*.xcarchive" -type d 2>/dev/null || echo "No archive found in RUNNER_TEMP"
+          find GymApp -name "*.xcarchive" -type d 2>/dev/null || true
+
+      - name: Package IPA
+        run: |
+          mkdir -p $RUNNER_TEMP/payload/Payload
+          cp -r "$RUNNER_TEMP/WeGoGym.xcarchive/Products/Applications/"*.app "$RUNNER_TEMP/payload/Payload/"
+          cd $RUNNER_TEMP/payload
+          zip -r $RUNNER_TEMP/WeGoGym.ipa .
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
           name: WeGoGym-ipa
-          path: GymApp/WeGoGym.ipa
+          path: ${{ runner.temp }}/WeGoGym.ipa
