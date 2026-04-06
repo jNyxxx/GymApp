@@ -27,7 +27,7 @@ export default function SummaryView() {
   } = useSummaryViewModel();
 
   const handleRefresh = () => {
-    storeRefresh(settings.resetHour);
+    storeRefresh(settings.resetHour, settings.resetMinute);
     refresh();
   };
 

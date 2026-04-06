@@ -5,7 +5,8 @@ export interface AppSettings {
   remindersEnabled: boolean;
   reminderHour: number;
   reminderMinute: number;
-  resetHour: number; // 6 AM default, changeable
+  resetHour: number;
+  resetMinute: number;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -14,4 +15,5 @@ export const DEFAULT_SETTINGS: AppSettings = {
   reminderHour: 18,
   reminderMinute: 0,
   resetHour: 6,
+  resetMinute: 0,
 };

@@ -48,11 +48,11 @@ export default function HomeView() {
   const storeRefresh = useGymStore((state) => state.refresh);
 
   useEffect(() => {
-    initialize(settings.resetHour);
+    initialize(settings.resetHour, settings.resetMinute);
   }, [initialize, settings.resetHour]);
 
   const handleRefresh = () => {
-    storeRefresh(settings.resetHour);
+    storeRefresh(settings.resetHour, settings.resetMinute);
     refresh();
   };
 

@@ -14,21 +14,21 @@ interface GymStore {
   currentStreak: number;
   bestStreak: number;
   monthlyStats: MonthlyStats | null;
-  
+
   // Loading states
   loading: boolean;
   initialized: boolean;
   refreshing: boolean;
-  
+
   // Actions
-  initialize: (resetHour?: number) => Promise<void>;
-  saveEntry: (status: GymStatus, split?: WorkoutSplit, dateKey?: string, resetHour?: number) => Promise<GymEntry>;
-  deleteEntry: (dateKey: string, resetHour?: number) => Promise<void>;
-  refresh: (resetHour?: number) => Promise<void>;
+  initialize: (resetHour?: number, resetMinute?: number) => Promise<void>;
+  saveEntry: (status: GymStatus, split?: WorkoutSplit, dateKey?: string, resetHour?: number, resetMinute?: number) => Promise<GymEntry>;
+  deleteEntry: (dateKey: string, resetHour?: number, resetMinute?: number) => Promise<void>;
+  refresh: (resetHour?: number, resetMinute?: number) => Promise<void>;
   clearAllData: () => Promise<void>;
-  
+
   // Internal
-  _computeStats: (entries: GymEntry[], resetHour: number) => void;
+  _computeStats: (entries: GymEntry[], resetHour: number, resetMinute: number) => void;
 }
 
 /**
@@ -47,14 +47,14 @@ export const useGymStore = create<GymStore>((set, get) => ({
   initialized: false,
   refreshing: false,
 
-  initialize: async (resetHour = 6) => {
+  initialize: async (resetHour = 6, resetMinute = 0) => {
     if (get().initialized) return;
-    
+
     set({ loading: true });
-    
+
     try {
       const entries = await GymLogService.getAllEntries();
-      get()._computeStats(entries, resetHour);
+      get()._computeStats(entries, resetHour, resetMinute);
       set({ initialized: true });
     } catch (error) {
       console.error('[GymStore] Failed to initialize:', error);
@@ -62,30 +62,30 @@ export const useGymStore = create<GymStore>((set, get) => ({
     }
   },
 
-  saveEntry: async (status, split, dateKey, resetHour = 6) => {
+  saveEntry: async (status, split, dateKey, resetHour = 6, resetMinute = 0) => {
     const entry = await GymLogService.saveEntry(status, split, dateKey);
-    
+
     // Refresh all data after save
     const entries = await GymLogService.getAllEntries();
-    get()._computeStats(entries, resetHour);
-    
+    get()._computeStats(entries, resetHour, resetMinute);
+
     return entry;
   },
 
-  deleteEntry: async (dateKey, resetHour = 6) => {
+  deleteEntry: async (dateKey, resetHour = 6, resetMinute = 0) => {
     await GymLogService.deleteEntry(dateKey);
-    
+
     // Refresh all data after delete
     const entries = await GymLogService.getAllEntries();
-    get()._computeStats(entries, resetHour);
+    get()._computeStats(entries, resetHour, resetMinute);
   },
 
-  refresh: async (resetHour = 6) => {
+  refresh: async (resetHour = 6, resetMinute = 0) => {
     set({ refreshing: true });
-    
+
     try {
       const entries = await GymLogService.getAllEntries();
-      get()._computeStats(entries, resetHour);
+      get()._computeStats(entries, resetHour, resetMinute);
     } catch (error) {
       console.error('[GymStore] Failed to refresh:', error);
     } finally {
@@ -104,8 +104,8 @@ export const useGymStore = create<GymStore>((set, get) => ({
     });
   },
 
-  _computeStats: (entries, resetHour) => {
-    const todayKey = getGymDateKey(new Date(), resetHour);
+  _computeStats: (entries, resetHour, resetMinute = 0) => {
+    const todayKey = getGymDateKey(new Date(), resetHour, resetMinute);
     const monthKey = getMonthKey();
     
     const todayEntry = entries.find((e) => e.dateKey === todayKey) || null;

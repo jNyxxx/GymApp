@@ -6,10 +6,12 @@ import { DEFAULT_RESET_HOUR } from '../constants/Constants';
  * Otherwise returns today's date.
  * All returned dates are in YYYY-MM-DD format.
  */
-export function getGymDateKey(date: Date = new Date(), resetHour: number = DEFAULT_RESET_HOUR): string {
+export function getGymDateKey(date: Date = new Date(), resetHour: number = DEFAULT_RESET_HOUR, resetMinute: number = 0): string {
   const adjusted = new Date(date);
+  const currentMinutes = adjusted.getHours() * 60 + adjusted.getMinutes();
+  const resetMinutes = resetHour * 60 + resetMinute;
 
-  if (adjusted.getHours() < resetHour) {
+  if (currentMinutes < resetMinutes) {
     adjusted.setDate(adjusted.getDate() - 1);
   }
 
@@ -98,10 +100,11 @@ export function getNextMonth(monthKey: string): string {
 }
 
 /**
- * Formats an hour number into a 12-hour display string (e.g. "6:00 AM").
+ * Formats an hour and minute into a 12-hour display string (e.g. "2:41 AM").
  */
-export function formatResetHour(hour: number): string {
+export function formatResetHour(hour: number, minute: number = 0): string {
   const period = hour >= 12 ? 'PM' : 'AM';
   const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-  return `${displayHour}:00 ${period}`;
+  const displayMinute = String(minute).padStart(2, '0');
+  return `${displayHour}:${displayMinute} ${period}`;
 }

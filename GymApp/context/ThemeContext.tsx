@@ -48,7 +48,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
               settings.reminderMinute
             );
           }
-          await NotificationService.scheduleResetNotification(settings.resetHour);
+          await NotificationService.scheduleResetNotification(settings.resetHour, settings.resetMinute);
         } catch {
           // Ignore scheduling errors on load
         }
@@ -71,8 +71,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
 
     // Handle reset hour notification
-    if ('resetHour' in updated) {
-      await NotificationService.scheduleResetNotification(next.resetHour);
+    if ('resetHour' in updated || 'resetMinute' in updated) {
+      await NotificationService.scheduleResetNotification(next.resetHour, next.resetMinute);
     }
   };
 

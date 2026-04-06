@@ -96,9 +96,9 @@ export class NotificationService {
   }
 
   /**
-   * Schedule a daily notification at the gym day reset hour.
+   * Schedule a daily notification at the gym day reset hour and minute.
    */
-  static async scheduleResetNotification(hour: number): Promise<string | null> {
+  static async scheduleResetNotification(hour: number, minute: number = 0): Promise<string | null> {
     try {
       const hasPermission = await this.checkPermission();
       if (!hasPermission) {
@@ -114,7 +114,7 @@ export class NotificationService {
       const trigger: Notifications.NotificationTriggerInput = {
         type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
         hour,
-        minute: 0,
+        minute,
         repeats: true,
       };
 

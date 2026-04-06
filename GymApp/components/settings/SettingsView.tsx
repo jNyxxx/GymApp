@@ -30,7 +30,7 @@ export default function SettingsView() {
   const [isImporting, setIsImporting] = useState(false);
 
   const reminderDisplay = format12Hour(settings.reminderHour, settings.reminderMinute);
-  const resetDisplay = formatResetHour(settings.resetHour);
+  const resetDisplay = formatResetHour(settings.resetHour, settings.resetMinute);
 
   const handleThemeToggle = () => {
     toggleTheme();
@@ -40,8 +40,8 @@ export default function SettingsView() {
     await updateSettings({ remindersEnabled: !settings.remindersEnabled });
   };
 
-  const handleResetHourChange = async (hour: number) => {
-    await updateSettings({ resetHour: hour });
+  const handleResetTimeChange = async (hour: number, minute: number) => {
+    await updateSettings({ resetHour: hour, resetMinute: minute });
   };
 
   const handleReminderTimeChange = async (hour: number, minute: number) => {
@@ -97,7 +97,7 @@ export default function SettingsView() {
               const result = await FileExportService.importFromFile();
               
               if (result.success) {
-                await refresh(settings.resetHour);
+                await refresh(settings.resetHour, settings.resetMinute);
                 Alert.alert('Import Successful', result.message);
               } else if (result.message !== 'Import cancelled') {
                 Alert.alert('Import Failed', result.message);
@@ -114,7 +114,7 @@ export default function SettingsView() {
   };
 
   const handleRefresh = () => {
-    refresh(settings.resetHour);
+    refresh(settings.resetHour, settings.resetMinute);
   };
 
   return (
@@ -265,7 +265,8 @@ export default function SettingsView() {
         <TimePickerSheet
           visible={showResetPicker}
           value={settings.resetHour}
-          onChange={(h) => handleResetHourChange(h)}
+          minute={settings.resetMinute}
+          onChange={(h, m) => handleResetTimeChange(h, m || settings.resetMinute)}
           onClose={() => setShowResetPicker(false)}
           title="Reset Time"
         />

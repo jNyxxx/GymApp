@@ -31,7 +31,7 @@ export default function CalendarView() {
   const selectedEntry = selectedDateKey ? (getEntryForDate(selectedDateKey) ?? null) : null;
 
   const handleRefresh = () => {
-    storeRefresh(settings.resetHour);
+    storeRefresh(settings.resetHour, settings.resetMinute);
     refresh();
   };
 
