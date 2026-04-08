@@ -1,5 +1,7 @@
 import React from 'react';
-import { ScrollView, StyleSheet, ActivityIndicator, View, Text, RefreshControl } from 'react-native';
+import { ScrollView, StyleSheet, ActivityIndicator, View, RefreshControl } from 'react-native';
+import { router } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSummaryViewModel } from '../../viewModels/SummaryViewModel';
 import CalendarHeader from '../../components/calendar/CalendarHeader';
 import SummaryCard from '../../components/summary/SummaryCard';
@@ -8,17 +10,25 @@ import WeeklyBreakdownCard from '../../components/summary/WeeklyBreakdownCard';
 import AttendanceChartCard from '../../components/summary/AttendanceChartCard';
 import SplitDistributionCard from '../../components/summary/SplitDistributionCard';
 import StoryCard from '../../components/summary/StoryCard';
+import ProgressionInsightsCard from '../../components/summary/ProgressionInsightsCard';
 import { useColors, useTheme } from '../../context/ThemeContext';
 import { useGymStore } from '../../context/GymStore';
+import { GoalProgress } from '../../models/Goal';
+import { GoalService } from '../../services/GoalService';
+import { screenContentStyle } from '../../constants/DesignSystem';
+import GoalsProgressCard from '../goals/GoalsProgressCard';
+import EmptyState from '../shared/EmptyState';
 
 export default function SummaryView() {
   const colors = useColors();
   const { settings } = useTheme();
   const refreshing = useGymStore((state) => state.refreshing);
   const storeRefresh = useGymStore((state) => state.refresh);
+  const [goalProgress, setGoalProgress] = React.useState<GoalProgress[]>([]);
   
   const {
     stats,
+    progressionInsights,
     allEntries,
     currentMonth,
     loading,
@@ -27,6 +37,24 @@ export default function SummaryView() {
     goToNextMonth,
     refresh,
   } = useSummaryViewModel();
+
+  const loadGoalProgress = React.useCallback(() => {
+    let mounted = true;
+    GoalService.getGoalProgress(allEntries, currentMonth).then((progress) => {
+      if (mounted) setGoalProgress(progress);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [allEntries, currentMonth]);
+
+  React.useEffect(() => loadGoalProgress(), [loadGoalProgress]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      return loadGoalProgress();
+    }, [loadGoalProgress])
+  );
 
   const handleRefresh = () => {
     storeRefresh(settings.resetHour, settings.resetMinute);
@@ -44,7 +72,14 @@ export default function SummaryView() {
   if (!stats) {
     return (
       <View style={[styles.emptyContainer, { backgroundColor: colors.bg }]}>
-        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No data available</Text>
+        <EmptyState
+          iconName="stats-chart-outline"
+          title="No summary data yet"
+          description="Log your first gym session to unlock monthly insights and trends."
+          actionLabel="Log a Session"
+          onAction={() => router.push('/(tabs)/index')}
+          style={styles.emptyStateCard}
+        />
       </View>
     );
   }
@@ -73,6 +108,8 @@ export default function SummaryView() {
       />
 
       <SummaryCard stats={stats} />
+      <GoalsProgressCard progressItems={goalProgress} title="Goals this month" />
+      {progressionInsights && <ProgressionInsightsCard insights={progressionInsights} />}
       <AttendanceChartCard entries={allEntries} monthKey={currentMonth} />
       <SplitDistributionCard entries={allEntries} monthKey={currentMonth} />
       <MostTrainedSplitCard stats={stats} />
@@ -87,11 +124,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingTop: 24,
-    paddingLeft: 20,
-    paddingRight: 20,
-    paddingBottom: 96,
-    gap: 16,
+    ...screenContentStyle,
   },
   loadingContainer: {
     flex: 1,
@@ -100,10 +133,10 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 20,
   },
-  emptyText: {
-    fontSize: 16,
+  emptyStateCard: {
+    width: '100%',
   },
 });

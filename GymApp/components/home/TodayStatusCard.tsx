@@ -1,10 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { useColors, useTheme } from '../../context/ThemeContext';
+import { useColors } from '../../context/ThemeContext';
 import { GymEntry } from '../../models/GymEntry';
 import { GymStatus } from '../../models/GymStatus';
 import SplitIcon from '../shared/SplitIcon';
-import { formatFriendly } from '../../services/DateLogicService';
+import { cardSurfaceStyle, sectionHeadingTextStyle } from '../../constants/DesignSystem';
 
 interface TodayStatusCardProps {
   entry: GymEntry | null;
@@ -19,6 +19,9 @@ export default function TodayStatusCard({ entry }: TodayStatusCardProps) {
         <Text style={[styles.label, { color: colors.textMuted }]}>Today's Session</Text>
         <View style={styles.emptyRow}>
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Not logged yet</Text>
+          <Text style={[styles.emptyHint, { color: colors.textMuted }]}>
+            Use quick actions below to log today.
+          </Text>
         </View>
       </View>
     );
@@ -72,23 +75,20 @@ export default function TodayStatusCard({ entry }: TodayStatusCardProps) {
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
+    ...cardSurfaceStyle,
     gap: 14,
   },
-  label: {
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    fontWeight: '700',
-  },
+  label: sectionHeadingTextStyle,
   emptyRow: {
-    paddingVertical: 8,
+    paddingVertical: 6,
+    gap: 4,
   },
   emptyText: {
     fontSize: 15,
     fontWeight: '600',
+  },
+  emptyHint: {
+    fontSize: 13,
   },
   statusRow: {
     flexDirection: 'row',

@@ -3,7 +3,7 @@ import { GymEntry } from '../models/GymEntry';
 import { GymStatus } from '../models/GymStatus';
 import { WorkoutSplit } from '../models/WorkoutSplit';
 
-function createEntry(dateKey: string, status: GymStatus, split?: WorkoutSplit): GymEntry {
+function createEntry(dateKey: string, status: GymStatus, split?: WorkoutSplit | string): GymEntry {
   return {
     id: dateKey,
     dateKey,
@@ -76,6 +76,20 @@ describe('SummaryService', () => {
       expect(stats.mostTrainedSplit).not.toBeNull();
       expect(stats.mostTrainedSplit?.split).toBe(WorkoutSplit.UPPER);
       expect(stats.mostTrainedSplit?.count).toBe(3);
+    });
+
+    it('tracks custom split ids in distribution and most-trained split', () => {
+      const entries = [
+        createEntry('2026-04-01', GymStatus.WENT, 'hybrid_push_pull'),
+        createEntry('2026-04-02', GymStatus.WENT, 'hybrid_push_pull'),
+        createEntry('2026-04-03', GymStatus.WENT, 'hybrid_push_pull'),
+        createEntry('2026-04-04', GymStatus.WENT, WorkoutSplit.PUSH),
+      ];
+
+      const stats = SummaryService.getMonthlyStats(entries, '2026-04');
+
+      expect(stats.splitCounts.hybrid_push_pull).toBe(3);
+      expect(stats.mostTrainedSplit).toEqual({ split: 'hybrid_push_pull', count: 3 });
     });
 
     it('counts split distribution correctly', () => {

@@ -22,7 +22,7 @@ export function useCalendarViewModel() {
   const allEntries = useGymStore((state) => state.entries);
   const storeRefresh = useGymStore((state) => state.refresh);
 
-  const todayKey = getGymDateKey(new Date(), settings.resetHour);
+  const todayKey = getGymDateKey(new Date(), settings.resetHour, settings.resetMinute);
 
   // Filter entries for current month
   const entries = useMemo(() => {

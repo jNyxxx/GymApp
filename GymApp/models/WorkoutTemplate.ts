@@ -54,28 +54,49 @@ export function generateTemplateId(name: string): string {
  * Migrate an old-format exercise (flat sets/reps/weight) to the new per-set model.
  */
 export function migrateExercise(exercise: any): Exercise {
-  // Already in new format
-  if (Array.isArray(exercise.sets)) {
-    return exercise as Exercise;
+  const fallbackSlug =
+    typeof exercise?.name === 'string'
+      ? exercise.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+      : '';
+  const exerciseId =
+    typeof exercise?.id === 'string' && exercise.id.trim().length > 0
+      ? exercise.id
+      : `exercise_${fallbackSlug || 'legacy'}`;
+  const exerciseName =
+    typeof exercise?.name === 'string' && exercise.name.trim().length > 0 ? exercise.name.trim() : 'Exercise';
+
+  if (Array.isArray(exercise?.sets)) {
+    const normalizedSets = exercise.sets
+      .map((set: any, index: number) => ({
+        id:
+          typeof set?.id === 'string' && set.id.trim().length > 0
+            ? set.id
+            : `${exerciseId}_set_${index + 1}`,
+        reps: typeof set?.reps === 'string' ? set.reps : '',
+        weight: typeof set?.weight === 'string' ? set.weight : '',
+      }))
+      .filter((set: SetEntry) => typeof set.id === 'string' && set.id.length > 0);
+
+    return {
+      id: exerciseId,
+      name: exerciseName,
+      sets: normalizedSets,
+    };
   }
 
-  // Old flat format: sets?: number, reps?: string, weight?: string
-  const setCount = exercise.sets || 0;
-  const reps = exercise.reps || '';
-  const weight = exercise.weight || '';
+  const setCount = typeof exercise?.sets === 'number' ? Math.max(0, Math.floor(exercise.sets)) : 0;
+  const reps = typeof exercise?.reps === 'string' ? exercise.reps : '';
+  const weight = typeof exercise?.weight === 'string' ? exercise.weight : '';
 
-  const setEntries: SetEntry[] = [];
-  for (let i = 0; i < setCount; i++) {
-    setEntries.push({
-      id: generateSetId(),
-      reps,
-      weight,
-    });
-  }
+  const setEntries: SetEntry[] = Array.from({ length: setCount }, (_, index) => ({
+    id: `${exerciseId}_set_${index + 1}`,
+    reps,
+    weight,
+  }));
 
   return {
-    id: exercise.id,
-    name: exercise.name,
+    id: exerciseId,
+    name: exerciseName,
     sets: setEntries,
   };
 }

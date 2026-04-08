@@ -18,6 +18,10 @@ import { WorkoutTemplateService } from '../../services/WorkoutTemplateService';
 import TemplateCard from './TemplateCard';
 import TemplateDetailView from './TemplateDetailView';
 import PrimaryButton from '../shared/PrimaryButton';
+import Chip from '../shared/Chip';
+import EmptyState from '../shared/EmptyState';
+import SheetActions from '../shared/SheetActions';
+import { screenContentStyle, screenTitleTextStyle } from '../../constants/DesignSystem';
 
 export default function TemplatesView() {
   const colors = useColors();
@@ -108,9 +112,16 @@ export default function TemplatesView() {
         <View style={styles.headerLeft}>
           <Text style={[styles.title, { color: colors.text }]}>Workout Templates</Text>
           {templates.length > 0 && (
-            <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-              {templates.length} template{templates.length !== 1 ? 's' : ''} · {totalExercises} exercises · {totalSets} sets
-            </Text>
+            <View style={styles.statsRow}>
+              <Chip
+                label={`${templates.length} template${templates.length !== 1 ? 's' : ''}`}
+                compact
+                backgroundColor={colors.primaryGlow}
+                textColor={colors.primary}
+              />
+              <Chip label={`${totalExercises} exercises`} compact />
+              <Chip label={`${totalSets} sets`} compact />
+            </View>
           )}
         </View>
         <TouchableOpacity
@@ -135,27 +146,14 @@ export default function TemplatesView() {
             Loading templates...
           </Text>
         ) : templates.length === 0 ? (
-          <View style={styles.emptyState}>
-            <View style={[styles.emptyIconContainer, { backgroundColor: colors.primaryGlow }]}>
-              <Ionicons name="barbell-outline" size={48} color={colors.primary} />
-            </View>
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>
-              No Templates Yet
-            </Text>
-            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-              Create reusable workout templates to quickly log your sessions.
-            </Text>
-            <TouchableOpacity
-              style={[styles.emptyButton, { backgroundColor: colors.primary }]}
-              onPress={handleCreateNew}
-              accessibilityRole="button"
-              accessibilityLabel="Create first template"
-              accessibilityHint="Opens the create template dialog"
-            >
-              <Ionicons name="add-circle-outline" size={20} color="#000" />
-              <Text style={styles.emptyButtonText}>Create Your First Template</Text>
-            </TouchableOpacity>
-          </View>
+          <EmptyState
+            iconName="barbell-outline"
+            title="No templates yet"
+            description="Create reusable workout templates to quickly log your sessions."
+            actionLabel="Create Your First Template"
+            onAction={handleCreateNew}
+            style={styles.emptyState}
+          />
         ) : (
           <View style={styles.templateList}>
             {templates.map((template) => (
@@ -190,7 +188,7 @@ export default function TemplatesView() {
               accessibilityLabel="Template name"
             />
 
-            <View style={styles.modalActions}>
+            <SheetActions style={styles.modalActions}>
               <PrimaryButton
                 title="Cancel"
                 onPress={() => setShowCreateModal(false)}
@@ -207,7 +205,7 @@ export default function TemplatesView() {
                 accessibilityLabel="Create template"
                 accessibilityHint="Creates a new workout template"
               />
-            </View>
+            </SheetActions>
           </View>
         </SafeAreaView>
       </Modal>
@@ -226,31 +224,25 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   headerLeft: { flex: 1 },
-  title: { fontSize: 28, fontWeight: '800', lineHeight: 34 },
-  subtitle: { fontSize: 13, fontWeight: '500', marginTop: 4 },
+  title: { ...screenTitleTextStyle },
+  statsRow: {
+    marginTop: 6,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
   addButton: {
     width: 42, height: 42, borderRadius: 21,
     justifyContent: 'center', alignItems: 'center',
   },
   scrollView: { flex: 1 },
-  scrollContent: { padding: 20, gap: 14 },
+  scrollContent: {
+    ...screenContentStyle,
+  },
   loadingText: { fontSize: 14, textAlign: 'center', paddingVertical: 40 },
   emptyState: {
-    flex: 1, justifyContent: 'center', alignItems: 'center',
-    paddingVertical: 80, paddingHorizontal: 32,
+    marginTop: 24,
   },
-  emptyIconContainer: {
-    width: 80, height: 80, borderRadius: 40,
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: 24,
-  },
-  emptyTitle: { fontSize: 22, fontWeight: '800', marginBottom: 8, textAlign: 'center' },
-  emptyText: { fontSize: 14, textAlign: 'center', marginBottom: 28, lineHeight: 20 },
-  emptyButton: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingHorizontal: 24, paddingVertical: 14, borderRadius: 14,
-  },
-  emptyButtonText: { color: '#000', fontSize: 15, fontWeight: '700' },
   templateList: { gap: 14 },
   modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   modalBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
@@ -270,7 +262,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 15,
   },
-  modalActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  modalActions: { marginTop: 4 },
   modalActionButton: { flex: 1 },
   disabledButton: { opacity: 0.5 },
 });

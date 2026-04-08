@@ -4,6 +4,7 @@ import { useColors } from '../../context/ThemeContext';
 import { MonthlyStats } from '../../services/SummaryService';
 import { GymEntry } from '../../models/GymEntry';
 import { GymStatus } from '../../models/GymStatus';
+import { cardSurfaceStyle, sectionHeadingTextStyle } from '../../constants/DesignSystem';
 
 interface WeeklyBreakdownCardProps {
   stats: MonthlyStats;
@@ -82,17 +83,10 @@ function computeWeeklyBreakdown(entries: GymEntry[], monthKey: string) {
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
+    ...cardSurfaceStyle,
     gap: 14,
   },
-  label: {
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    fontWeight: '700',
-  },
+  label: sectionHeadingTextStyle,
   strongest: {
     fontSize: 16,
     fontWeight: '700',

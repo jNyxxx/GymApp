@@ -4,14 +4,21 @@ import { GymStatus } from '../models/GymStatus';
 import { WorkoutSplit } from '../models/WorkoutSplit';
 import { ExercisePerformanceLog } from '../models/ExerciseLog';
 import { STORAGE_KEYS } from '../constants/Constants';
-import { getGymDateKey } from '../services/DateLogicService';
+import { EntryPolicyService, EntryWriteSource } from './EntryPolicyService';
+import { GoalService } from './GoalService';
 import { 
-  validateGymEntries, 
-  validateExportData,
-  formatValidationErrors,
   CURRENT_DATA_VERSION,
   ValidatedExportData,
+  validateFitnessGoals,
 } from '../models/schemas';
+import { DataMigrationService } from './DataMigrationService';
+
+interface SaveEntryPolicyOptions {
+  source?: EntryWriteSource;
+  resetHour?: number;
+  resetMinute?: number;
+  now?: Date;
+}
 
 /**
  * Service responsible for saving, retrieving, and managing daily gym log entries.
@@ -23,21 +30,7 @@ export class GymLogService {
    */
   static async getAllEntries(): Promise<GymEntry[]> {
     try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEYS.ENTRIES);
-      if (!raw) return [];
-      
-      const parsed = JSON.parse(raw);
-      const result = validateGymEntries(parsed);
-      
-      if (!result.success) {
-        console.warn('[GymLogService] Invalid entries in storage:', formatValidationErrors(result.error));
-        // Return what we can parse, filter out invalid entries
-        return Array.isArray(parsed) ? parsed.filter((e: unknown) => 
-          typeof e === 'object' && e !== null && 'dateKey' in e && 'status' in e
-        ) : [];
-      }
-      
-      return result.data;
+      return await DataMigrationService.getEntries();
     } catch (error) {
       console.error('[GymLogService] Failed to load entries:', error);
       return [];
@@ -45,8 +38,8 @@ export class GymLogService {
   }
 
   /**
-   * Save or update today's entry. If an entry already exists for the date key,
-   * it will be overwritten (latest tap wins).
+   * Save or update a daily entry according to EntryPolicyService rules.
+   * Existing entries for the same date key are replaced after policy checks.
    */
   static async saveEntry(
     status: GymStatus,
@@ -54,10 +47,26 @@ export class GymLogService {
     dateKey?: string,
     notes?: string,
     loggedAt?: string,
-    exerciseLogs?: ExercisePerformanceLog[]
+    exerciseLogs?: ExercisePerformanceLog[],
+    options?: SaveEntryPolicyOptions
   ): Promise<GymEntry> {
     const entries = await this.getAllEntries();
-    const key = dateKey || getGymDateKey();
+    const key = EntryPolicyService.resolveTargetDateKey({
+      explicitDateKey: dateKey,
+      now: options?.now,
+      resetHour: options?.resetHour,
+      resetMinute: options?.resetMinute,
+    });
+    const existingEntry = entries.find((e) => e.dateKey === key) || null;
+    const writePolicy = EntryPolicyService.getWritePolicy({
+      existingEntry,
+      source: options?.source || 'store',
+    });
+
+    if (!writePolicy.allowsWrite) {
+      throw new Error('Entry already exists for this gym day and must be edited via edit flow');
+    }
+
     const normalizedExerciseLogs =
       status === GymStatus.WENT
         ? exerciseLogs
@@ -73,6 +82,12 @@ export class GymLogService {
             }))
             .filter((exercise) => exercise.sets.length > 0)
         : undefined;
+    const resolvedExerciseLogs = EntryPolicyService.resolveExerciseLogs({
+      existingEntry,
+      nextStatus: status,
+      nextSplit: split,
+      incomingExerciseLogs: normalizedExerciseLogs,
+    });
 
     const newEntry: GymEntry = {
       id: `${key}`,
@@ -80,7 +95,7 @@ export class GymLogService {
       status,
       split,
       notes: notes?.trim() || undefined,
-      exerciseLogs: normalizedExerciseLogs?.length ? normalizedExerciseLogs : undefined,
+      exerciseLogs: resolvedExerciseLogs?.length ? resolvedExerciseLogs : undefined,
       loggedAt: loggedAt || new Date().toISOString(),
     };
 
@@ -163,11 +178,17 @@ export class GymLogService {
    */
   static async exportData(): Promise<string> {
     const entries = await this.getAllEntries();
+    const templates = await DataMigrationService.getTemplates();
+    const settings = await DataMigrationService.getSettings();
+    const goals = await GoalService.getGoals();
     
     const exportEnvelope: ValidatedExportData = {
       version: CURRENT_DATA_VERSION,
       exportedAt: new Date().toISOString(),
       entries,
+      templates,
+      settings,
+      goals,
     };
     
     return JSON.stringify(exportEnvelope, null, 2);
@@ -183,30 +204,48 @@ export class GymLogService {
     
     try {
       const parsed = JSON.parse(jsonString);
-      
-      // Check if it's the new versioned format
-      const versionedResult = validateExportData(parsed);
-      if (versionedResult.success) {
-        // Handle version migrations if needed in the future
-        const data = versionedResult.data;
-        await AsyncStorage.setItem(STORAGE_KEYS.ENTRIES, JSON.stringify(data.entries));
-        return { imported: data.entries.length, errors: [] };
+
+      const migrationResult = DataMigrationService.normalizeImportData(parsed);
+      if (migrationResult.errors.length > 0) {
+        errors.push(...migrationResult.errors);
+        return { imported: 0, errors };
       }
-      
-      // Fall back to legacy format (just an array of entries)
-      const legacyResult = validateGymEntries(parsed);
-      if (legacyResult.success) {
-        await AsyncStorage.setItem(STORAGE_KEYS.ENTRIES, JSON.stringify(legacyResult.data));
-        return { imported: legacyResult.data.length, errors: [] };
+
+      let goalsToPersist: Awaited<ReturnType<typeof GoalService.getGoals>> | null = null;
+      let shouldClearGoals = false;
+      if (parsed && typeof parsed === 'object' && 'goals' in parsed) {
+        const rawGoals = (parsed as { goals?: unknown }).goals;
+        if (rawGoals == null) {
+          shouldClearGoals = true;
+        } else {
+          const goalsResult = validateFitnessGoals(rawGoals);
+          if (!goalsResult.success) {
+            errors.push('Invalid goals payload in import data');
+            return { imported: 0, errors };
+          }
+          goalsToPersist = goalsResult.data;
+        }
+      } else {
+        shouldClearGoals = true;
       }
-      
-      // Both validations failed
-      errors.push('Invalid data format');
-      if (!versionedResult.success) {
-        errors.push(formatValidationErrors(versionedResult.error));
+
+      await DataMigrationService.persistImportedData({
+        entries: migrationResult.entries,
+        templates: migrationResult.templates,
+        settings: migrationResult.settings,
+      });
+
+      if (migrationResult.warnings.length > 0) {
+        console.warn('[GymLogService] Import migration warnings:', migrationResult.warnings.join(' | '));
       }
-      
-      return { imported: 0, errors };
+
+      if (goalsToPersist) {
+        await GoalService.saveGoals(goalsToPersist);
+      } else if (shouldClearGoals) {
+        await GoalService.clearGoals();
+      }
+
+      return { imported: migrationResult.entries.length, errors: [] };
     } catch (parseError) {
       errors.push(`JSON parse error: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
       return { imported: 0, errors };

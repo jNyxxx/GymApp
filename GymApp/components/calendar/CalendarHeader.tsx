@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useColors } from '../../context/ThemeContext';
+import { screenTitleTextStyle } from '../../constants/DesignSystem';
 
 interface CalendarHeaderProps {
   monthLabel: string;
@@ -60,8 +61,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   monthLabel: {
-    fontSize: 26,
-    fontWeight: '800',
+    ...screenTitleTextStyle,
   },
   subtitle: {
     fontSize: 13,

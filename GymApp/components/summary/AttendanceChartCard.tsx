@@ -5,6 +5,7 @@ import { GymEntry } from '../../models/GymEntry';
 import { GymStatus } from '../../models/GymStatus';
 import { parseDateKey } from '../../services/DateLogicService';
 import SimpleBarChart from '../shared/SimpleBarChart';
+import { cardSurfaceStyle, sectionHeadingTextStyle } from '../../constants/DesignSystem';
 
 interface AttendanceChartCardProps {
   entries: GymEntry[];
@@ -93,17 +94,10 @@ function getWeeklyAttendance(entries: GymEntry[], monthKey: string): { label: st
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
+    ...cardSurfaceStyle,
     gap: 14,
   },
-  label: {
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    fontWeight: '700',
-  },
+  label: sectionHeadingTextStyle,
   title: {
     fontSize: 18,
     fontWeight: '800',

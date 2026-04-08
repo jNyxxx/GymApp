@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useColors } from '../../context/ThemeContext';
-import { Achievement, ACHIEVEMENTS, getAchievementById } from '../../models/Achievement';
+import { ACHIEVEMENTS } from '../../models/Achievement';
 import { AchievementService } from '../../services/AchievementService';
+import Chip from '../shared/Chip';
+import { cardSurfaceStyle } from '../../constants/DesignSystem';
 
 export default function AchievementsCard() {
   const colors = useColors();
@@ -35,11 +37,12 @@ export default function AchievementsCard() {
     <View style={[styles.card, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>Achievements</Text>
-        <View style={[styles.progressBadge, { backgroundColor: colors.primaryGlow }]}>
-          <Text style={[styles.progressText, { color: colors.primary }]}>
-            {unlockedCount}/{totalCount}
-          </Text>
-        </View>
+        <Chip
+          label={`${unlockedCount}/${totalCount}`}
+          compact
+          backgroundColor={colors.primaryGlow}
+          textColor={colors.primary}
+        />
       </View>
 
       <View style={styles.grid}>
@@ -87,9 +90,7 @@ export default function AchievementsCard() {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
+    ...cardSurfaceStyle,
     gap: 16,
   },
   header: {
@@ -100,15 +101,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: '800',
-  },
-  progressBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  progressText: {
-    fontSize: 13,
-    fontWeight: '700',
   },
   grid: {
     flexDirection: 'row',

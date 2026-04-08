@@ -5,6 +5,7 @@ import { GymEntry } from '../../models/GymEntry';
 import { GymStatus } from '../../models/GymStatus';
 import { WorkoutSplit, SPLIT_LABELS } from '../../models/WorkoutSplit';
 import { WorkoutTemplateService } from '../../services/WorkoutTemplateService';
+import { cardSurfaceStyle, sectionHeadingTextStyle } from '../../constants/DesignSystem';
 
 interface SplitDistributionCardProps {
   entries: GymEntry[];
@@ -150,17 +151,10 @@ export default function SplitDistributionCard({ entries, monthKey }: SplitDistri
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
+    ...cardSurfaceStyle,
     gap: 14,
   },
-  label: {
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    fontWeight: '700',
-  },
+  label: sectionHeadingTextStyle,
   title: {
     fontSize: 18,
     fontWeight: '800',

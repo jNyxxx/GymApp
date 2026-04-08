@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useColors } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
+import { cardSurfaceStyle } from '../../constants/DesignSystem';
 
 interface StreakCardProps {
   currentStreak: number;
@@ -51,10 +52,8 @@ export default memo(StreakCard);
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 20,
-    padding: 20,
+    ...cardSurfaceStyle,
     flexDirection: 'row',
-    borderWidth: 1,
   },
   streakItem: {
     flex: 1,

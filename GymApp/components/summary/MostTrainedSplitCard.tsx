@@ -5,6 +5,7 @@ import { MonthlyStats } from '../../services/SummaryService';
 import { SPLIT_LABELS, WorkoutSplit } from '../../models/WorkoutSplit';
 import { WorkoutTemplateService } from '../../services/WorkoutTemplateService';
 import SplitIcon from '../shared/SplitIcon';
+import { cardSurfaceStyle, sectionHeadingTextStyle } from '../../constants/DesignSystem';
 
 interface MostTrainedSplitCardProps {
   stats: MonthlyStats;
@@ -107,17 +108,10 @@ export default function MostTrainedSplitCard({ stats }: MostTrainedSplitCardProp
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
+    ...cardSurfaceStyle,
     gap: 14,
   },
-  label: {
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    fontWeight: '700',
-  },
+  label: sectionHeadingTextStyle,
   topSplitRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

@@ -4,6 +4,11 @@ export const STORAGE_KEYS = {
   ENTRIES: 'gym_entries',
   SETTINGS: 'app_settings',
   CUSTOM_SPLITS: 'custom_splits',
+  WORKOUT_TEMPLATES: 'workout_templates',
+  ENTRIES_VERSION: 'gym_entries_version',
+  SETTINGS_VERSION: 'app_settings_version',
+  TEMPLATES_VERSION: 'workout_templates_version',
+  GOALS: 'fitness_goals_v2',
 };
 
 export const DEFAULT_RESET_HOUR = 6;

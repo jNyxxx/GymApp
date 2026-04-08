@@ -1,9 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useColors } from '../../context/ThemeContext';
-import { SPLIT_LABELS, WorkoutSplit } from '../../models/WorkoutSplit';
+import { SPLIT_LABELS } from '../../models/WorkoutSplit';
 import ProgressBar from '../shared/ProgressBar';
 import SplitIcon from '../shared/SplitIcon';
+import Chip from '../shared/Chip';
+import { cardSurfaceStyle, sectionHeadingTextStyle } from '../../constants/DesignSystem';
 
 interface MonthlyProgressCardProps {
   gymDays: number;
@@ -31,9 +33,11 @@ export default function MonthlyProgressCard({
         <Text style={[styles.count, { color: colors.text }]}>
           {gymDays} <Text style={[styles.countTotal, { color: colors.textSecondary }]}>/ {totalDays}</Text>
         </Text>
-        <View style={[styles.pill, { backgroundColor: pillBg }]}>
-          <Text style={[styles.pillText, { color: pillColor }]}>{percentage}% gym days</Text>
-        </View>
+        <Chip
+          label={`${percentage}% gym days`}
+          backgroundColor={pillBg}
+          textColor={pillColor}
+        />
       </View>
 
       <ProgressBar progress={gymDays / totalDays} style={{ marginVertical: 4 }} />
@@ -50,9 +54,7 @@ export default function MonthlyProgressCard({
             </Text>
           </View>
         )}
-        <View style={[styles.noGymBadge, { backgroundColor: colors.gray }]}>
-          <Text style={[styles.noGymText, { color: colors.textSecondary }]}>No gym: {noGymDays}</Text>
-        </View>
+        <Chip label={`No gym: ${noGymDays}`} compact />
       </View>
     </View>
   );
@@ -60,17 +62,10 @@ export default function MonthlyProgressCard({
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
+    ...cardSurfaceStyle,
     gap: 14,
   },
-  label: {
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    fontWeight: '700',
-  },
+  label: sectionHeadingTextStyle,
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -83,16 +78,6 @@ const styles = StyleSheet.create({
   countTotal: {
     fontSize: 20,
     fontWeight: '700',
-  },
-  pill: {
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  pillText: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.3,
   },
   bottomRow: {
     flexDirection: 'row',
@@ -110,15 +95,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   splitBold: {
-    fontWeight: '700',
-  },
-  noGymBadge: {
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-  },
-  noGymText: {
-    fontSize: 12,
     fontWeight: '700',
   },
 });

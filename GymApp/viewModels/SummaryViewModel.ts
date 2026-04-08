@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { GymEntry } from '../models/GymEntry';
 import { SummaryService, MonthlyStats } from '../services/SummaryService';
+import { ProgressionInsights, ProgressionService } from '../services/ProgressionService';
 import { getMonthKey, getPreviousMonth, getNextMonth, formatMonthLabel } from '../services/DateLogicService';
 import { useGymStore } from '../context/GymStore';
 
 export function useSummaryViewModel() {
   const [currentMonth, setCurrentMonth] = useState(getMonthKey());
   const [stats, setStats] = useState<MonthlyStats | null>(null);
+  const [progressionInsights, setProgressionInsights] = useState<ProgressionInsights | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Use global store for reactive updates across tabs
@@ -15,7 +17,9 @@ export function useSummaryViewModel() {
   const loadData = useCallback((entries: GymEntry[], monthKey: string) => {
     setLoading(true);
     const monthlyStats = SummaryService.getMonthlyStats(entries, monthKey);
+    const progression = ProgressionService.getProgressionInsights(entries, monthKey);
     setStats(monthlyStats);
+    setProgressionInsights(progression);
     setLoading(false);
   }, []);
 
@@ -37,6 +41,7 @@ export function useSummaryViewModel() {
   return {
     currentMonth,
     stats,
+    progressionInsights,
     allEntries,
     loading,
     monthLabel,

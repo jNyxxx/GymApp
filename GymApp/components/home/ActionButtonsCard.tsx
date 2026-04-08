@@ -1,45 +1,26 @@
 import React from 'react';
-import { View, StyleSheet, Alert, Text } from 'react-native';
+import { View, StyleSheet, Text } from 'react-native';
 import PrimaryButton from '../shared/PrimaryButton';
 import { GymEntry } from '../../models/GymEntry';
 import { GymStatus } from '../../models/GymStatus';
 import { useColors } from '../../context/ThemeContext';
+import { cardSurfaceStyle, sectionHeadingTextStyle } from '../../constants/DesignSystem';
 
 interface ActionButtonsCardProps {
   entry: GymEntry | null;
+  canQuickLogToday: boolean;
   onWentGym: () => void;
   onNoGym: () => void;
 }
 
-export default function ActionButtonsCard({ entry, onWentGym, onNoGym }: ActionButtonsCardProps) {
+export default function ActionButtonsCard({
+  entry,
+  canQuickLogToday,
+  onWentGym,
+  onNoGym,
+}: ActionButtonsCardProps) {
   const colors = useColors();
   const isNoGym = entry?.status === GymStatus.NO_GYM;
-  const alreadyLogged = !!entry;
-
-  const handleWentGymPress = () => {
-    if (alreadyLogged) {
-      // Button disabled - show alert
-      Alert.alert(
-        'Already Logged',
-        'You already logged a session today! Tap your session card above to edit it.',
-        [{ text: 'OK' }]
-      );
-    } else {
-      onWentGym();
-    }
-  };
-
-  const handleNoGymPress = () => {
-    if (alreadyLogged) {
-      Alert.alert(
-        'Already Logged',
-        'You already logged a session today! Tap your session card above to edit it.',
-        [{ text: 'OK' }]
-      );
-    } else {
-      onNoGym();
-    }
-  };
 
   return (
     <View 
@@ -50,20 +31,20 @@ export default function ActionButtonsCard({ entry, onWentGym, onNoGym }: ActionB
     >
       <Text style={[styles.label, { color: colors.textMuted }]}>Quick actions</Text>
       <PrimaryButton
-        title={alreadyLogged ? "Already Logged" : "We Go Gym"}
-        onPress={handleWentGymPress}
+        title={canQuickLogToday ? "We Go Gym" : "Already Logged"}
+        onPress={onWentGym}
         variant="primary"
-        style={{ opacity: alreadyLogged ? 0.7 : 1 }}
-        accessibilityLabel={alreadyLogged ? "Already logged session today" : "Log gym session"}
-        accessibilityHint={alreadyLogged ? "Session is already logged. Open today's session card to edit it." : "Opens the split picker to log your workout"}
+        style={{ opacity: canQuickLogToday ? 1 : 0.7 }}
+        accessibilityLabel={canQuickLogToday ? "Log gym session" : "Already logged session today"}
+        accessibilityHint={canQuickLogToday ? "Opens the split picker to log your workout" : "Session is already logged. Open today's session card to edit it."}
       />
       <PrimaryButton
         title="No Gym"
-        onPress={handleNoGymPress}
+        onPress={onNoGym}
         variant="secondary"
-        style={{ opacity: alreadyLogged ? 0.7 : 1 }}
+        style={{ opacity: canQuickLogToday ? 1 : 0.7 }}
         accessibilityLabel={isNoGym ? "Log rest day (already logged today)" : "Log rest day"}
-        accessibilityHint={alreadyLogged ? "Session is already logged. Open today's session card to edit it." : "Marks today as a rest day"}
+        accessibilityHint={canQuickLogToday ? "Marks today as a rest day" : "Session is already logged. Open today's session card to edit it."}
       />
     </View>
   );
@@ -71,16 +52,9 @@ export default function ActionButtonsCard({ entry, onWentGym, onNoGym }: ActionB
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
+    ...cardSurfaceStyle,
     width: '100%',
     gap: 12,
   },
-  label: {
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 1.4,
-    fontWeight: '700',
-  },
+  label: sectionHeadingTextStyle,
 });

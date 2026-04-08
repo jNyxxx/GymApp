@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useColors } from '../../context/ThemeContext';
 import { MonthlyStats } from '../../services/SummaryService';
 import { StoryGeneratorService } from '../../services/StoryGeneratorService';
+import { cardSurfaceStyle, sectionHeadingTextStyle } from '../../constants/DesignSystem';
 
 interface MonthlyStoryCardProps {
   stats: MonthlyStats;
@@ -22,17 +23,10 @@ export default function MonthlyStoryCard({ stats }: MonthlyStoryCardProps) {
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
+    ...cardSurfaceStyle,
     gap: 14,
   },
-  label: {
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    fontWeight: '700',
-  },
+  label: sectionHeadingTextStyle,
   story: {
     fontSize: 14,
     lineHeight: 22,

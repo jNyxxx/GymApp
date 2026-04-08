@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useColors } from '../../context/ThemeContext';
 import { MonthlyStats } from '../../services/SummaryService';
+import { sectionHeadingTextStyle } from '../../constants/DesignSystem';
 
 interface SummaryCardProps {
   stats: MonthlyStats;
@@ -38,12 +39,7 @@ const styles = StyleSheet.create({
   container: {
     gap: 12,
   },
-  heading: {
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    fontWeight: '700',
-  },
+  heading: sectionHeadingTextStyle,
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -57,10 +53,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   statLabel: {
-    fontSize: 11,
-    textTransform: 'uppercase',
+    ...sectionHeadingTextStyle,
     letterSpacing: 1,
-    fontWeight: '700',
     marginBottom: 8,
   },
   statValue: {

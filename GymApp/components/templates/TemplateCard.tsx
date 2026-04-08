@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../../context/ThemeContext';
 import { WorkoutTemplate, SetEntry } from '../../models/WorkoutTemplate';
+import { cardSurfaceStyle } from '../../constants/DesignSystem';
 
 interface TemplateCardProps {
   template: WorkoutTemplate;
@@ -62,8 +63,8 @@ function getTotalSets(exercises: { sets: SetEntry[] }[]): number {
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 18 },
+  card: { ...cardSurfaceStyle, overflow: 'hidden' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   iconContainer: {
     width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 12,

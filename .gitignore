@@ -1,0 +1,20 @@
+# Qwen Code local config
+.qwen/
+
+# Root-level temp docs and scripts (real project lives in GymApp/)
+CHANGELOG.md
+IMPLEMENTATION_SUMMARY.md
+WIDGETS_IMPLEMENTATION.md
+create-templates.js
+run-setup.bat
+setup-templates.bat
+
+# Lock file belongs inside GymApp/, not repo root
+package-lock.json
+
+# Dead code remnants (goal system removed)
+GymApp/components/goals/
+GymApp/components/settings/GoalsSettingsCard.tsx
+GymApp/models/Goal.ts
+GymApp/services/GoalService.ts
+GymApp/services/GoalService.test.ts

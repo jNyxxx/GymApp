@@ -8,6 +8,8 @@ import DayDetailSheet from '../../components/calendar/DayDetailSheet';
 import AddSessionSheet from '../../components/calendar/AddSessionSheet';
 import { useColors, useTheme } from '../../context/ThemeContext';
 import { useGymStore } from '../../context/GymStore';
+import { cardSurfaceStyle, screenContentStyle } from '../../constants/DesignSystem';
+import EmptyState from '../shared/EmptyState';
 
 export default function CalendarView() {
   const colors = useColors();
@@ -73,6 +75,16 @@ export default function CalendarView() {
             onDayTap={openDayDetail}
           />
         </View>
+
+        {entries.length === 0 && (
+          <EmptyState
+            iconName="calendar-clear-outline"
+            title="No sessions this month"
+            description="Add a custom session or log from Home to fill out your calendar."
+            actionLabel="Add Session"
+            onAction={() => setShowAddSession(true)}
+          />
+        )}
       </ScrollView>
 
       <DayDetailSheet
@@ -116,16 +128,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 24,
-    paddingLeft: 20,
-    paddingRight: 20,
-    paddingBottom: 96,
-    gap: 20,
+    ...screenContentStyle,
   },
   calendarCard: {
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
+    ...cardSurfaceStyle,
   },
   fab: {
     position: 'absolute',

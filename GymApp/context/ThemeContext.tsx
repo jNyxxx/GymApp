@@ -5,6 +5,7 @@ import { STORAGE_KEYS } from '../constants/Constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeMode } from '../models/AppSettings';
 import { NotificationService } from '../services/NotificationService';
+import { DataMigrationService } from '../services/DataMigrationService';
 
 type ThemeColors = typeof DARK_COLORS;
 
@@ -26,10 +27,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEYS.SETTINGS);
-        if (raw) {
-          setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(raw) });
-        }
+        const migratedSettings = await DataMigrationService.getSettings();
+        setSettings({ ...DEFAULT_SETTINGS, ...migratedSettings });
       } catch {
         // Use defaults
       }

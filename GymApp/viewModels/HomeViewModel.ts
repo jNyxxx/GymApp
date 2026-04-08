@@ -4,6 +4,7 @@ import { WorkoutSplit } from '../models/WorkoutSplit';
 import { ExercisePerformanceLog } from '../models/ExerciseLog';
 import { GymLogService } from '../services/GymLogService';
 import { getMonthKey } from '../services/DateLogicService';
+import { EntryPolicyService } from '../services/EntryPolicyService';
 import { useTheme } from '../context/ThemeContext';
 import { useGymStore } from '../context/GymStore';
 
@@ -23,25 +24,65 @@ export function useHomeViewModel() {
   const storeRefresh = useGymStore((state) => state.refresh);
 
   const monthKey = getMonthKey();
+  const quickLogPolicy = EntryPolicyService.getWritePolicy({
+    existingEntry: todayEntry,
+    source: 'home-quick-log',
+  });
+  const quickLogBlockedMessage =
+    quickLogPolicy.blockedReason === 'already-logged-for-effective-day'
+      ? 'You already logged a session today! Tap your session card above to edit it.'
+      : '';
 
   const confirmAndSaveWentGym = async (
     split: WorkoutSplit | string,
     notes?: string,
     exerciseLogs?: ExercisePerformanceLog[]
   ) => {
-    await GymLogService.saveEntry(GymStatus.WENT, split, undefined, notes, undefined, exerciseLogs);
-    setShowSplitPicker(false);
-    await storeRefresh(settings.resetHour, settings.resetMinute);
+    if (!quickLogPolicy.allowsWrite) return false;
+
+    try {
+      await GymLogService.saveEntry(
+        GymStatus.WENT,
+        split,
+        undefined,
+        notes,
+        undefined,
+        exerciseLogs,
+        {
+          source: 'home-quick-log',
+          resetHour: settings.resetHour,
+          resetMinute: settings.resetMinute,
+        }
+      );
+      setShowSplitPicker(false);
+      await storeRefresh(settings.resetHour, settings.resetMinute);
+      return true;
+    } catch (error) {
+      console.warn('[HomeViewModel] Failed to save quick gym entry:', error);
+      return false;
+    }
   };
 
   const confirmAndSaveNoGym = async () => {
-    await GymLogService.saveEntry(GymStatus.NO_GYM);
-    await storeRefresh(settings.resetHour, settings.resetMinute);
+    if (!quickLogPolicy.allowsWrite) return false;
+    try {
+      await GymLogService.saveEntry(GymStatus.NO_GYM, undefined, undefined, undefined, undefined, undefined, {
+        source: 'home-quick-log',
+        resetHour: settings.resetHour,
+        resetMinute: settings.resetMinute,
+      });
+      await storeRefresh(settings.resetHour, settings.resetMinute);
+      return true;
+    } catch (error) {
+      console.warn('[HomeViewModel] Failed to save quick no-gym entry:', error);
+      return false;
+    }
   };
 
   const openSplitPicker = () => {
-    if (todayEntry) return;
+    if (!quickLogPolicy.allowsWrite) return false;
     setShowSplitPicker(true);
+    return true;
   };
 
   const closeSplitPicker = () => setShowSplitPicker(false);
@@ -57,6 +98,8 @@ export function useHomeViewModel() {
     bestStreak,
     monthlyStats,
     daysInMonth,
+    canQuickLogToday: quickLogPolicy.allowsWrite,
+    quickLogBlockedMessage,
     confirmAndSaveWentGym,
     confirmAndSaveNoGym,
     openSplitPicker,

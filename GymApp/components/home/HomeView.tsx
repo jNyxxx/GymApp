@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
   View,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { useHomeViewModel } from '../../viewModels/HomeViewModel';
+import { useFocusEffect } from '@react-navigation/native';
 import { useGymStore } from '../../context/GymStore';
 import { useTheme } from '../../context/ThemeContext';
 import GreetingHeader from '../../components/home/GreetingHeader';
@@ -18,14 +20,19 @@ import MonthlyStoryCard from '../../components/home/MonthlyStoryCard';
 import { HomeScreenSkeleton } from '../../components/shared/Skeleton';
 import AchievementToast from '../../components/shared/AchievementToast';
 import { Achievement } from '../../models/Achievement';
+import { GoalProgress } from '../../models/Goal';
 import { AchievementService } from '../../services/AchievementService';
+import { getMonthKey } from '../../services/DateLogicService';
+import { GoalService } from '../../services/GoalService';
 import { GymLogService } from '../../services/GymLogService';
 import { useColors } from '../../context/ThemeContext';
+import GoalsProgressCard from '../goals/GoalsProgressCard';
+import { screenContentStyle } from '../../constants/DesignSystem';
 
 export default function HomeView() {
   const colors = useColors();
   const { settings } = useTheme();
-    const {
+  const {
     todayEntry,
     loading,
     showSplitPicker,
@@ -35,6 +42,8 @@ export default function HomeView() {
     daysInMonth,
     confirmAndSaveWentGym,
     confirmAndSaveNoGym,
+    canQuickLogToday,
+    quickLogBlockedMessage,
     openSplitPicker,
     closeSplitPicker,
     refresh,
@@ -44,14 +53,16 @@ export default function HomeView() {
   const initialize = useGymStore((state) => state.initialize);
   const refreshing = useGymStore((state) => state.refreshing);
   const storeRefresh = useGymStore((state) => state.refresh);
+  const entries = useGymStore((state) => state.entries);
 
   // Achievement toast state
   const [achievementToShow, setAchievementToShow] = useState<Achievement | null>(null);
   const [showAchievementToast, setShowAchievementToast] = useState(false);
+  const [goalProgress, setGoalProgress] = useState<GoalProgress[]>([]);
 
   useEffect(() => {
     initialize(settings.resetHour, settings.resetMinute);
-  }, [initialize, settings.resetHour]);
+  }, [initialize, settings.resetHour, settings.resetMinute]);
 
   // Check for new achievements when todayEntry changes
   useEffect(() => {
@@ -69,9 +80,45 @@ export default function HomeView() {
     checkAchievements();
   }, [todayEntry?.id]);
 
+  const loadGoalProgress = useCallback(() => {
+    let mounted = true;
+    GoalService.getGoalProgress(entries, getMonthKey()).then((progress) => {
+      if (mounted) setGoalProgress(progress);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [entries]);
+
+  useEffect(() => loadGoalProgress(), [loadGoalProgress]);
+
+  useFocusEffect(
+    useCallback(() => {
+      return loadGoalProgress();
+    }, [loadGoalProgress])
+  );
+
   const handleRefresh = () => {
     storeRefresh(settings.resetHour, settings.resetMinute);
     refresh();
+  };
+
+  const showAlreadyLoggedAlert = () => {
+    Alert.alert('Already Logged', quickLogBlockedMessage || 'You already logged a session today.');
+  };
+
+  const handleWentGymPress = () => {
+    const opened = openSplitPicker();
+    if (!opened) {
+      showAlreadyLoggedAlert();
+    }
+  };
+
+  const handleNoGymPress = async () => {
+    const saved = await confirmAndSaveNoGym();
+    if (!saved) {
+      showAlreadyLoggedAlert();
+    }
   };
 
   return (
@@ -98,8 +145,9 @@ export default function HomeView() {
             <TodayStatusCard entry={todayEntry} />
             <ActionButtonsCard
               entry={todayEntry}
-              onWentGym={openSplitPicker}
-              onNoGym={confirmAndSaveNoGym}
+              canQuickLogToday={canQuickLogToday}
+              onWentGym={handleWentGymPress}
+              onNoGym={handleNoGymPress}
             />
             <StreakCard currentStreak={currentStreak} bestStreak={bestStreak} />
 
@@ -111,6 +159,8 @@ export default function HomeView() {
                 mostTrainedSplit={monthlyStats.mostTrainedSplit || undefined}
               />
             )}
+
+            <GoalsProgressCard progressItems={goalProgress} compact title="Goal progress" />
 
             {monthlyStats && <MonthlyStoryCard stats={monthlyStats} />}
           </>
@@ -142,10 +192,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingTop: 24,
-    paddingLeft: 20,
-    paddingRight: 20,
-    paddingBottom: 96,
-    gap: 16,
+    ...screenContentStyle,
   },
 });

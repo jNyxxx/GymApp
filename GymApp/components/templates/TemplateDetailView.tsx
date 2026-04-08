@@ -17,6 +17,8 @@ import { useColors } from '../../context/ThemeContext';
 import { WorkoutTemplate, Exercise, SetEntry, generateExerciseId, generateSetId } from '../../models/WorkoutTemplate';
 import { WorkoutTemplateService } from '../../services/WorkoutTemplateService';
 import PrimaryButton from '../shared/PrimaryButton';
+import SheetActions from '../shared/SheetActions';
+import { sectionHeadingTextStyle } from '../../constants/DesignSystem';
 
 interface TemplateDetailViewProps {
   template: WorkoutTemplate;
@@ -357,10 +359,10 @@ export default function TemplateDetailView({ template, onBack, onSaved }: Templa
               maxLength={60}
               accessibilityLabel="Exercise name"
             />
-            <View style={styles.modalActions}>
-              <PrimaryButton
-                title="Cancel"
-                onPress={() => setShowAddExerciseModal(false)}
+             <SheetActions style={styles.modalActions}>
+               <PrimaryButton
+                 title="Cancel"
+                 onPress={() => setShowAddExerciseModal(false)}
                 variant="secondary"
                 style={styles.modalActionButton}
                 accessibilityLabel="Cancel adding exercise"
@@ -371,10 +373,10 @@ export default function TemplateDetailView({ template, onBack, onSaved }: Templa
                 variant="primary"
                 style={[styles.modalActionButton, !newExerciseName.trim() && styles.disabledButton]}
                 disabled={!newExerciseName.trim()}
-                accessibilityLabel="Add exercise"
-                accessibilityHint="Adds this exercise to the template"
-              />
-            </View>
+                 accessibilityLabel="Add exercise"
+                 accessibilityHint="Adds this exercise to the template"
+               />
+             </SheetActions>
           </View>
         </SafeAreaView>
       </Modal>
@@ -398,9 +400,7 @@ const styles = StyleSheet.create({
   headerMeta: { fontSize: 12, marginTop: 2 },
   scrollView: { flex: 1 },
   scrollContent: { padding: 20, gap: 12 },
-  sectionLabel: {
-    fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.5, fontWeight: '700',
-  },
+  sectionLabel: sectionHeadingTextStyle,
   emptyState: { alignItems: 'center', paddingVertical: 48, gap: 12 },
   emptyIconContainer: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
   emptyText: { fontSize: 14, textAlign: 'center' },
@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
   editArea: { paddingHorizontal: 14, paddingBottom: 14, gap: 10 },
   nameInput: { borderRadius: 10, borderWidth: 1, padding: 12, fontSize: 15 },
   setsHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4, alignItems: 'center' },
-  setsLabel: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
+  setsLabel: { ...sectionHeadingTextStyle, letterSpacing: 1.2 },
   setBadgePlaceholder: { width: 24, height: 24, marginRight: 8 },
   setsCols: { flexDirection: 'row', gap: 8, flex: 1 },
   setsColLabel: { fontSize: 11, fontWeight: '600', flex: 1, textAlign: 'center' },
@@ -457,7 +457,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 15,
   },
-  modalActions: { flexDirection: 'row', gap: 10 },
+  modalActions: { gap: 10 },
   modalActionButton: { flex: 1 },
   disabledButton: { opacity: 0.5 },
   fab: {

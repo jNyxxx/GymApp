@@ -1,9 +1,14 @@
 import { 
   GymEntrySchema, 
   GymEntriesArraySchema,
+  WorkoutTemplateSchema,
   AppSettingsSchema,
+  FitnessGoalSchema,
+  FitnessGoalsArraySchema,
   ExportDataSchema,
   validateGymEntries,
+  validateWorkoutTemplates,
+  validateFitnessGoals,
   validateExportData,
   formatValidationErrors,
   CURRENT_DATA_VERSION,
@@ -162,10 +167,107 @@ describe('schemas', () => {
     });
   });
 
+  describe('WorkoutTemplateSchema', () => {
+    it('validates a correct workout template', () => {
+      const template = {
+        id: 'template_push',
+        name: 'Push Day',
+        emoji: '🔥',
+        exercises: [
+          {
+            id: 'ex_bench',
+            name: 'Bench Press',
+            sets: [
+              { id: 'set_1', reps: '10', weight: '60' },
+            ],
+          },
+        ],
+        createdAt: '2026-04-06T10:30:00.000Z',
+        updatedAt: '2026-04-06T10:30:00.000Z',
+      };
+
+      const result = WorkoutTemplateSchema.safeParse(template);
+      expect(result.success).toBe(true);
+    });
+
+    it('rejects malformed template sets', () => {
+      const template = {
+        id: 'template_push',
+        name: 'Push Day',
+        exercises: [
+          {
+            id: 'ex_bench',
+            name: 'Bench Press',
+            sets: [{ reps: '10', weight: '60' }],
+          },
+        ],
+        createdAt: '2026-04-06T10:30:00.000Z',
+        updatedAt: '2026-04-06T10:30:00.000Z',
+      };
+
+      const result = WorkoutTemplateSchema.safeParse(template);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('FitnessGoalSchema', () => {
+    it('validates an attendance goal', () => {
+      const goal = {
+        id: 'attendance_goal',
+        type: 'attendance',
+        targetGymDays: 16,
+        createdAt: '2026-04-06T10:30:00.000Z',
+      };
+
+      const result = FitnessGoalSchema.safeParse(goal);
+      expect(result.success).toBe(true);
+    });
+
+    it('validates a monthly volume goal', () => {
+      const goal = {
+        id: 'volume_goal',
+        type: 'monthly-volume',
+        targetVolumeKg: 12000,
+        createdAt: '2026-04-06T10:30:00.000Z',
+      };
+
+      const result = FitnessGoalSchema.safeParse(goal);
+      expect(result.success).toBe(true);
+    });
+
+    it('validates an exercise progression goal', () => {
+      const goal = {
+        id: 'bench_goal',
+        type: 'exercise-progression',
+        exerciseName: 'Bench Press',
+        exerciseKey: 'bench press',
+        targetEstimatedOneRepMaxKg: 120,
+        createdAt: '2026-04-06T10:30:00.000Z',
+      };
+
+      const result = FitnessGoalSchema.safeParse(goal);
+      expect(result.success).toBe(true);
+    });
+
+    it('rejects exercise goals with invalid target', () => {
+      const goal = {
+        id: 'bad_goal',
+        type: 'exercise-progression',
+        exerciseName: 'Bench Press',
+        exerciseKey: 'bench press',
+        targetEstimatedOneRepMaxKg: 0,
+        createdAt: '2026-04-06T10:30:00.000Z',
+      };
+
+      const result = FitnessGoalSchema.safeParse(goal);
+      expect(result.success).toBe(false);
+    });
+  });
+
   describe('ExportDataSchema', () => {
     it('validates correct export data', () => {
       const exportData = {
-        version: 1,
+        version: CURRENT_DATA_VERSION,
         exportedAt: '2026-04-06T10:30:00.000Z',
         entries: [
           {
@@ -184,7 +286,7 @@ describe('schemas', () => {
 
     it('validates export data with optional settings', () => {
       const exportData = {
-        version: 1,
+        version: CURRENT_DATA_VERSION,
         exportedAt: '2026-04-06T10:30:00.000Z',
         entries: [],
         settings: {
@@ -201,9 +303,54 @@ describe('schemas', () => {
       expect(result.success).toBe(true);
     });
 
+    it('validates export data with goals', () => {
+      const exportData = {
+        version: CURRENT_DATA_VERSION,
+        exportedAt: '2026-04-06T10:30:00.000Z',
+        entries: [],
+        goals: [
+          {
+            id: 'volume_goal',
+            type: 'monthly-volume',
+            targetVolumeKg: 12000,
+            createdAt: '2026-04-06T10:30:00.000Z',
+          },
+        ],
+      };
+
+      const result = ExportDataSchema.safeParse(exportData);
+      expect(result.success).toBe(true);
+    });
+
+    it('validates export data with templates', () => {
+      const exportData = {
+        version: CURRENT_DATA_VERSION,
+        exportedAt: '2026-04-06T10:30:00.000Z',
+        entries: [],
+        templates: [
+          {
+            id: 'template_pull',
+            name: 'Pull Day',
+            exercises: [
+              {
+                id: 'ex_row',
+                name: 'Barbell Row',
+                sets: [{ id: 'set_1', reps: '8', weight: '70' }],
+              },
+            ],
+            createdAt: '2026-04-06T10:30:00.000Z',
+            updatedAt: '2026-04-06T10:30:00.000Z',
+          },
+        ],
+      };
+
+      const result = ExportDataSchema.safeParse(exportData);
+      expect(result.success).toBe(true);
+    });
+
     it('rejects export data with incomplete settings', () => {
       const exportData = {
-        version: 1,
+        version: CURRENT_DATA_VERSION,
         exportedAt: '2026-04-06T10:30:00.000Z',
         entries: [],
         settings: {
@@ -251,6 +398,68 @@ describe('schemas', () => {
       ];
       
       const result = validateGymEntries(entries);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('validateFitnessGoals', () => {
+    it('validates a goals array', () => {
+      const goals = [
+        {
+          id: 'attendance_goal',
+          type: 'attendance',
+          targetGymDays: 12,
+          createdAt: '2026-04-06T10:30:00.000Z',
+        },
+        {
+          id: 'volume_goal',
+          type: 'monthly-volume',
+          targetVolumeKg: 8000,
+          createdAt: '2026-04-06T10:30:00.000Z',
+        },
+      ];
+
+      const result = validateFitnessGoals(goals);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toHaveLength(2);
+      }
+    });
+
+    it('returns error for invalid goals', () => {
+      const goals = [
+        {
+          id: 'bad_goal',
+          type: 'monthly-volume',
+          targetVolumeKg: -100,
+          createdAt: '2026-04-06T10:30:00.000Z',
+        },
+      ];
+
+      const result = validateFitnessGoals(goals);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('validateWorkoutTemplates', () => {
+    it('validates array of templates', () => {
+      const templates = [
+        {
+          id: 'template_push',
+          name: 'Push Day',
+          exercises: [],
+          createdAt: '2026-04-06T10:30:00.000Z',
+          updatedAt: '2026-04-06T10:30:00.000Z',
+        },
+      ];
+
+      const result = validateWorkoutTemplates(templates);
+      expect(result.success).toBe(true);
+    });
+
+    it('returns error for invalid templates', () => {
+      const templates = [{ id: 'bad_template' }];
+      const result = validateWorkoutTemplates(templates);
       expect(result.success).toBe(false);
     });
   });

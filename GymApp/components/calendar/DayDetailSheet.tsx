@@ -11,6 +11,8 @@ import { GymLogService } from '../../services/GymLogService';
 import { WorkoutTemplateService } from '../../services/WorkoutTemplateService';
 import SplitIcon from '../shared/SplitIcon';
 import PrimaryButton from '../shared/PrimaryButton';
+import SheetActions from '../shared/SheetActions';
+import { DESIGN_SYSTEM, sectionHeadingTextStyle } from '../../constants/DesignSystem';
 
 interface DayDetailSheetProps {
   visible: boolean;
@@ -71,14 +73,23 @@ export default function DayDetailSheet({
   }, [visible]);
 
   const handleSetWent = async (split: WorkoutSplit | string) => {
-    const logsToKeep = entry?.split === split ? entry.exerciseLogs : undefined;
-    await GymLogService.saveEntry(GymStatus.WENT, split, dateKey, entry?.notes, undefined, logsToKeep);
+    await GymLogService.saveEntry(
+      GymStatus.WENT,
+      split,
+      dateKey,
+      entry?.notes,
+      undefined,
+      undefined,
+      { source: 'day-detail-edit' }
+    );
     setEditing(false);
     onEntryUpdated();
   };
 
   const handleSetNoGym = async () => {
-    await GymLogService.saveEntry(GymStatus.NO_GYM, undefined, dateKey);
+    await GymLogService.saveEntry(GymStatus.NO_GYM, undefined, dateKey, undefined, undefined, undefined, {
+      source: 'day-detail-edit',
+    });
     setEditing(false);
     onEntryUpdated();
   };
@@ -300,7 +311,7 @@ export default function DayDetailSheet({
                         textAlignVertical="top"
                         autoFocus
                       />
-                      <View style={styles.notesEditActions}>
+                      <SheetActions style={styles.notesEditActions}>
                         <TouchableOpacity 
                           style={[styles.notesCancelBtn, { backgroundColor: colors.gray }]}
                           onPress={() => setEditingNotes(false)}
@@ -318,7 +329,7 @@ export default function DayDetailSheet({
                         >
                           <Text style={styles.notesSaveText}>Save</Text>
                         </TouchableOpacity>
-                      </View>
+                      </SheetActions>
                     </View>
                   ) : (
                     <Text style={[styles.notesText, { color: entry.notes ? colors.text : colors.textMuted }]}>
@@ -350,7 +361,7 @@ export default function DayDetailSheet({
                 </View>
               )}
 
-              <View style={styles.actions}>
+              <SheetActions style={styles.actions}>
                 <PrimaryButton
                   title="Change Session"
                   onPress={() => setEditing(true)}
@@ -367,9 +378,9 @@ export default function DayDetailSheet({
                     style={styles.actionButton}
                     accessibilityLabel="Mark day as no gym"
                     accessibilityHint="Replaces the current session with no gym"
-                  />
-                )}
-              </View>
+                    />
+                  )}
+              </SheetActions>
             </>
           ) : (
             <View style={styles.emptyContent}>
@@ -399,10 +410,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: DESIGN_SYSTEM.sheet.topRadius,
+    borderTopRightRadius: DESIGN_SYSTEM.sheet.topRadius,
     paddingTop: 12,
-    paddingHorizontal: 24,
+    paddingHorizontal: DESIGN_SYSTEM.sheet.horizontalPadding,
     paddingBottom: 24,
     borderWidth: 1,
     borderBottomWidth: 0,
@@ -422,10 +433,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   label: {
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    fontWeight: '700',
+    ...sectionHeadingTextStyle,
     marginBottom: 4,
   },
   date: {
@@ -465,10 +473,7 @@ const styles = StyleSheet.create({
   sessionHint: {
     fontSize: 12,
   },
-  actions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
+  actions: {},
   actionButton: {
     flex: 1,
   },
@@ -494,9 +499,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   templatesLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
+    ...sectionHeadingTextStyle,
     letterSpacing: 1.2,
     marginTop: 4,
   },
@@ -563,7 +566,6 @@ const styles = StyleSheet.create({
     maxHeight: 120,
   },
   notesEditActions: {
-    flexDirection: 'row',
     gap: 10,
   },
   notesCancelBtn: {

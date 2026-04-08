@@ -19,9 +19,12 @@ import { useColors } from '../../context/ThemeContext';
 import { WorkoutSplit } from '../../models/WorkoutSplit';
 import { GymStatus } from '../../models/GymStatus';
 import { GymLogService } from '../../services/GymLogService';
+import { EntryPolicyService } from '../../services/EntryPolicyService';
 import { formatDateKey } from '../../services/DateLogicService';
 import SplitIcon from '../shared/SplitIcon';
 import PrimaryButton from '../shared/PrimaryButton';
+import SheetActions from '../shared/SheetActions';
+import { DESIGN_SYSTEM } from '../../constants/DesignSystem';
 
 interface AddSessionSheetProps {
   visible: boolean;
@@ -71,11 +74,13 @@ export default function AddSessionSheet({
 
   const handleSave = async () => {
     const dateKey = formatDateKey(selectedDate);
-    
-    // Check if session already exists for this date
     const existingEntry = await GymLogService.getEntry(dateKey);
-    
-    if (existingEntry) {
+    const writePolicy = EntryPolicyService.getWritePolicy({
+      existingEntry,
+      source: 'custom-session',
+    });
+
+    if (writePolicy.requiresReplaceConfirmation) {
       Alert.alert(
         'Session Exists',
         `You already have a session logged for ${dateKey}. Do you want to replace it?`,
@@ -105,7 +110,9 @@ export default function AddSessionSheet({
         selectedSplit,
         dateKey,
         notes.trim() || undefined,
-        loggedAtDate.toISOString()
+        loggedAtDate.toISOString(),
+        undefined,
+        { source: 'custom-session' }
       );
       onSaved();
       onClose();
@@ -259,7 +266,7 @@ export default function AddSessionSheet({
             </View>
             </ScrollView>
 
-            <View style={styles.actions}>
+            <SheetActions style={styles.actions}>
               <PrimaryButton
                 title="Cancel"
                 onPress={onClose}
@@ -275,7 +282,7 @@ export default function AddSessionSheet({
                 accessibilityLabel="Save session"
                 accessibilityHint="Creates or replaces the selected date entry"
               />
-            </View>
+            </SheetActions>
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -295,8 +302,8 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   sheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: DESIGN_SYSTEM.sheet.topRadius,
+    borderTopRightRadius: DESIGN_SYSTEM.sheet.topRadius,
     borderWidth: 1,
     borderBottomWidth: 0,
     maxHeight: '90%',
@@ -316,7 +323,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   content: {
-    paddingHorizontal: 24,
+    paddingHorizontal: DESIGN_SYSTEM.sheet.horizontalPadding,
     maxHeight: 500,
   },
   section: {
@@ -369,9 +376,7 @@ const styles = StyleSheet.create({
     minHeight: 100,
   },
   actions: {
-    flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 24,
+    paddingHorizontal: DESIGN_SYSTEM.sheet.horizontalPadding,
     paddingTop: 8,
   },
   actionButton: {

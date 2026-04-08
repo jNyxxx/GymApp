@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { WorkoutTemplate, Exercise, SetEntry, generateTemplateId, generateExerciseId, generateSetId, migrateTemplate } from '../models/WorkoutTemplate';
+import { WorkoutTemplate, Exercise, SetEntry, generateTemplateId, generateExerciseId, generateSetId } from '../models/WorkoutTemplate';
+import { STORAGE_KEYS } from '../constants/Constants';
+import { DataMigrationService } from './DataMigrationService';
 
-const STORAGE_KEY = 'workout_templates';
+const STORAGE_KEY = STORAGE_KEYS.WORKOUT_TEMPLATES;
 
 /**
  * Service for managing workout templates (custom splits with exercises).
@@ -12,11 +14,7 @@ export class WorkoutTemplateService {
    */
   static async getAll(): Promise<WorkoutTemplate[]> {
     try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      // Migrate any old-format templates
-      return parsed.map((t: any) => migrateTemplate(t));
+      return await DataMigrationService.getTemplates();
     } catch (error) {
       console.error('[WorkoutTemplateService] Failed to load templates:', error);
       return [];

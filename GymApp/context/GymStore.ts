@@ -63,7 +63,11 @@ export const useGymStore = create<GymStore>((set, get) => ({
   },
 
   saveEntry: async (status, split, dateKey, resetHour = 6, resetMinute = 0) => {
-    const entry = await GymLogService.saveEntry(status, split, dateKey);
+    const entry = await GymLogService.saveEntry(status, split, dateKey, undefined, undefined, undefined, {
+      source: 'store',
+      resetHour,
+      resetMinute,
+    });
 
     // Refresh all data after save
     const entries = await GymLogService.getAllEntries();

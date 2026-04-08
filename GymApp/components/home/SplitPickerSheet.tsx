@@ -18,6 +18,8 @@ import { WorkoutSplit, SPLIT_LABELS } from '../../models/WorkoutSplit';
 import { ExercisePerformanceLog } from '../../models/ExerciseLog';
 import { WorkoutTemplate } from '../../models/WorkoutTemplate';
 import { WorkoutTemplateService } from '../../services/WorkoutTemplateService';
+import { useGymStore } from '../../context/GymStore';
+import { getLatestRepeatableEntry } from './workoutLoggerUtils';
 import SplitIcon from '../shared/SplitIcon';
 import WorkoutLoggerSheet from './WorkoutLoggerSheet';
 
@@ -47,15 +49,35 @@ export default function SplitPickerSheet({
   currentNotes,
 }: SplitPickerSheetProps) {
   const colors = useColors();
+  const entries = useGymStore((state) => state.entries);
   const [selectedSplit, setSelectedSplit] = useState<string | null>(currentSplit || null);
   const [notes, setNotes] = useState(currentNotes || '');
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
   const [showWorkoutLogger, setShowWorkoutLogger] = useState(false);
+  const [loggerInitialExerciseLogs, setLoggerInitialExerciseLogs] = useState<ExercisePerformanceLog[] | undefined>(undefined);
+  const [loggerAutoFillLastValues, setLoggerAutoFillLastValues] = useState(true);
+  const [loggerTitleOverride, setLoggerTitleOverride] = useState<string | undefined>(undefined);
 
   const selectedTemplate = useMemo(
     () => templates.find((t) => t.id === selectedSplit) || null,
     [templates, selectedSplit]
   );
+  const latestRepeatableEntry = useMemo(() => getLatestRepeatableEntry(entries), [entries]);
+
+  const resolveSplitLabel = (split?: string) => {
+    if (!split) return 'Workout';
+    if (split in SPLIT_LABELS) return SPLIT_LABELS[split as WorkoutSplit];
+    const template = templates.find((item) => item.id === split);
+    return template?.name || split;
+  };
+
+  const repeatSessionMeta = useMemo(() => {
+    if (!latestRepeatableEntry?.exerciseLogs?.length) return '';
+    const exerciseCount = latestRepeatableEntry.exerciseLogs.length;
+    const totalSets = latestRepeatableEntry.exerciseLogs.reduce((sum, exercise) => sum + exercise.sets.length, 0);
+    const splitLabel = resolveSplitLabel(String(latestRepeatableEntry.split));
+    return `${splitLabel} · ${exerciseCount} exercises · ${totalSets} sets`;
+  }, [latestRepeatableEntry, templates]);
 
   const loadTemplates = async () => {
     await WorkoutTemplateService.migrateFromCustomSplits();
@@ -68,6 +90,9 @@ export default function SplitPickerSheet({
     setSelectedSplit(currentSplit || null);
     setNotes(currentNotes || '');
     setShowWorkoutLogger(false);
+    setLoggerInitialExerciseLogs(undefined);
+    setLoggerAutoFillLastValues(true);
+    setLoggerTitleOverride(undefined);
     loadTemplates();
   }, [visible, currentSplit, currentNotes]);
 
@@ -75,19 +100,44 @@ export default function SplitPickerSheet({
     setSelectedSplit(null);
     setNotes('');
     setShowWorkoutLogger(false);
+    setLoggerInitialExerciseLogs(undefined);
+    setLoggerAutoFillLastValues(true);
+    setLoggerTitleOverride(undefined);
     onClose();
+  };
+
+  const selectSplit = (split: string) => {
+    setSelectedSplit(split);
+    setLoggerInitialExerciseLogs(undefined);
+    setLoggerAutoFillLastValues(true);
+    setLoggerTitleOverride(undefined);
   };
 
   const handleConfirm = () => {
     if (!selectedSplit) return;
 
     if (selectedTemplate && selectedTemplate.exercises.length > 0) {
+      setLoggerInitialExerciseLogs(undefined);
+      setLoggerAutoFillLastValues(true);
+      setLoggerTitleOverride(undefined);
       setShowWorkoutLogger(true);
       return;
     }
 
     onSelect(selectedSplit, notes.trim() || undefined);
     resetAndClose();
+  };
+
+  const handleRepeatLastSession = () => {
+    if (!latestRepeatableEntry?.split || !latestRepeatableEntry.exerciseLogs?.length) return;
+
+    const split = String(latestRepeatableEntry.split);
+    setSelectedSplit(split);
+    setNotes(latestRepeatableEntry.notes || '');
+    setLoggerInitialExerciseLogs(latestRepeatableEntry.exerciseLogs);
+    setLoggerAutoFillLastValues(false);
+    setLoggerTitleOverride(`Repeat · ${resolveSplitLabel(split)}`);
+    setShowWorkoutLogger(true);
   };
 
   const handleWorkoutSave = (exerciseLogs: ExercisePerformanceLog[], workoutNotes?: string) => {
@@ -112,6 +162,28 @@ export default function SplitPickerSheet({
             <View style={[styles.sheet, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
               <View style={[styles.handle, { backgroundColor: colors.grayLight }]} />
               <Text style={[styles.title, { color: colors.text }]}>Pick Your Split</Text>
+              {latestRepeatableEntry?.exerciseLogs?.length ? (
+                <TouchableOpacity
+                  style={[styles.repeatButton, { backgroundColor: colors.primaryGlow, borderColor: colors.primaryBorder }]}
+                  onPress={handleRepeatLastSession}
+                  accessibilityRole="button"
+                  accessibilityLabel="Repeat last session"
+                  accessibilityHint="Starts today's workout with your previous session structure and numbers"
+                >
+                  <View style={styles.repeatContent}>
+                    <View style={[styles.repeatIconWrap, { backgroundColor: colors.cardBg }]}>
+                      <Ionicons name="repeat" size={16} color={colors.primary} />
+                    </View>
+                    <View style={styles.repeatTextWrap}>
+                      <Text style={[styles.repeatTitle, { color: colors.primary }]}>Repeat last session</Text>
+                      <Text style={[styles.repeatMeta, { color: colors.textSecondary }]} numberOfLines={1}>
+                        {repeatSessionMeta}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+                  </View>
+                </TouchableOpacity>
+              ) : null}
 
               <ScrollView style={styles.optionsScroll} showsVerticalScrollIndicator={false}>
                 <View style={styles.options}>
@@ -125,7 +197,7 @@ export default function SplitPickerSheet({
                           { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder },
                           isSelected && [styles.selectedOption, { borderColor: colors.primary, backgroundColor: colors.primaryGlow }],
                         ]}
-                        onPress={() => setSelectedSplit(split)}
+                        onPress={() => selectSplit(split)}
                         accessibilityRole="button"
                         accessibilityState={{ selected: isSelected }}
                         accessibilityLabel={`${SPLIT_LABELS[split]} split`}
@@ -153,7 +225,7 @@ export default function SplitPickerSheet({
                               { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder },
                               isSelected && [styles.selectedOption, { borderColor: colors.primary, backgroundColor: colors.primaryGlow }],
                             ]}
-                            onPress={() => setSelectedSplit(template.id)}
+                            onPress={() => selectSplit(template.id)}
                             accessibilityRole="button"
                             accessibilityState={{ selected: isSelected }}
                             accessibilityLabel={`${template.name} template`}
@@ -230,6 +302,9 @@ export default function SplitPickerSheet({
         visible={visible && showWorkoutLogger}
         template={selectedTemplate}
         initialNotes={notes}
+        initialExerciseLogs={loggerInitialExerciseLogs}
+        autoFillLastValues={loggerAutoFillLastValues}
+        titleOverride={loggerTitleOverride}
         onClose={() => setShowWorkoutLogger(false)}
         onSave={handleWorkoutSave}
       />
@@ -263,6 +338,37 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textAlign: 'center',
     marginBottom: 16,
+  },
+  repeatButton: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 12,
+  },
+  repeatContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  repeatIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  repeatTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  repeatTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  repeatMeta: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   optionsScroll: {
     maxHeight: 320,
