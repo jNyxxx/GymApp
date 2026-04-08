@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useColors } from '../../context/ThemeContext';
-import { WorkoutSplit, SPLIT_LABELS } from '../../models/WorkoutSplit';
+import { SPLIT_LABELS, WorkoutSplit } from '../../models/WorkoutSplit';
 import ProgressBar from '../shared/ProgressBar';
 import SplitIcon from '../shared/SplitIcon';
 
@@ -9,7 +9,7 @@ interface MonthlyProgressCardProps {
   gymDays: number;
   totalDays: number;
   noGymDays: number;
-  mostTrainedSplit?: { split: WorkoutSplit; count: number };
+  mostTrainedSplit?: { split: string; count: number };
 }
 
 export default function MonthlyProgressCard({

@@ -76,6 +76,22 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="templates"
+        options={{
+          tabBarLabel: 'Templates',
+          tabBarAccessibilityLabel: 'Templates tab - manage workout templates',
+          tabBarIcon: ({ focused }) => renderTabIcon(focused ? 'list' : 'list-outline', focused),
+        }}
+      />
+      <Tabs.Screen
+        name="achievements"
+        options={{
+          tabBarLabel: 'Badges',
+          tabBarAccessibilityLabel: 'Achievements tab - view your unlocked badges',
+          tabBarIcon: ({ focused }) => renderTabIcon(focused ? 'trophy' : 'trophy-outline', focused),
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           tabBarLabel: 'Settings',

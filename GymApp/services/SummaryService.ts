@@ -13,8 +13,8 @@ export interface MonthlyStats {
   currentStreak: number;
   bestStreak: number;
   strongestWeek: string;
-  mostTrainedSplit: { split: WorkoutSplit; count: number } | null;
-  splitCounts: Record<WorkoutSplit, number>;
+  mostTrainedSplit: { split: string; count: number } | null;
+  splitCounts: Record<string, number>;
 }
 
 /**
@@ -48,8 +48,8 @@ export class SummaryService {
     // Strongest week (most gym days in any 7-day window)
     const strongestWeek = this.calculateStrongestWeek(monthEntries);
 
-    // Split counts
-    const splitCounts: Record<WorkoutSplit, number> = {
+    // Split counts — start with built-in splits, then add any custom ones found
+    const splitCounts: Record<string, number> = {
       [WorkoutSplit.UPPER]: 0,
       [WorkoutSplit.LOWER]: 0,
       [WorkoutSplit.PUSH]: 0,
@@ -59,17 +59,25 @@ export class SummaryService {
       [WorkoutSplit.ANTERIOR]: 0,
     };
 
+    // First pass: collect all unique split IDs
+    for (const entry of monthEntries) {
+      if (entry.split && !splitCounts.hasOwnProperty(entry.split)) {
+        splitCounts[entry.split] = 0;
+      }
+    }
+
+    // Second pass: count
     for (const entry of monthEntries) {
       if (entry.split) {
         splitCounts[entry.split] = (splitCounts[entry.split] || 0) + 1;
       }
     }
 
-    // Most trained split
-    let mostTrainedSplit: { split: WorkoutSplit; count: number } | null = null;
+    // Most trained split — across ALL splits (built-in + custom)
+    let mostTrainedSplit: { split: string; count: number } | null = null;
     for (const [split, count] of Object.entries(splitCounts)) {
       if (count > 0 && (!mostTrainedSplit || count > mostTrainedSplit.count)) {
-        mostTrainedSplit = { split: split as WorkoutSplit, count };
+        mostTrainedSplit = { split, count };
       }
     }
 

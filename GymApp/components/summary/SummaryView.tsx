@@ -5,6 +5,8 @@ import CalendarHeader from '../../components/calendar/CalendarHeader';
 import SummaryCard from '../../components/summary/SummaryCard';
 import MostTrainedSplitCard from '../../components/summary/MostTrainedSplitCard';
 import WeeklyBreakdownCard from '../../components/summary/WeeklyBreakdownCard';
+import AttendanceChartCard from '../../components/summary/AttendanceChartCard';
+import SplitDistributionCard from '../../components/summary/SplitDistributionCard';
 import StoryCard from '../../components/summary/StoryCard';
 import { useColors, useTheme } from '../../context/ThemeContext';
 import { useGymStore } from '../../context/GymStore';
@@ -64,13 +66,15 @@ export default function SummaryView() {
       accessibilityLabel="Monthly summary"
     >
       <CalendarHeader
-        monthLabel="Monthly summary"
-        subtitle={`${monthLabel} performance · split trends`}
+        monthLabel={monthLabel}
+        subtitle="Performance and split trends"
         onPrev={goToPrevMonth}
         onNext={goToNextMonth}
       />
 
       <SummaryCard stats={stats} />
+      <AttendanceChartCard entries={allEntries} monthKey={currentMonth} />
+      <SplitDistributionCard entries={allEntries} monthKey={currentMonth} />
       <MostTrainedSplitCard stats={stats} />
       <WeeklyBreakdownCard stats={stats} entries={allEntries} monthKey={currentMonth} />
       <StoryCard stats={stats} />
@@ -86,7 +90,7 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     paddingLeft: 20,
     paddingRight: 20,
-    paddingBottom: 80,
+    paddingBottom: 96,
     gap: 16,
   },
   loadingContainer: {

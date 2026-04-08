@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { useColors } from '../../context/ThemeContext';
+import { useColors, useTheme } from '../../context/ThemeContext';
 import { GymEntry } from '../../models/GymEntry';
 import { GymStatus } from '../../models/GymStatus';
 import SplitIcon from '../shared/SplitIcon';
+import { formatFriendly } from '../../services/DateLogicService';
 
 interface TodayStatusCardProps {
   entry: GymEntry | null;
@@ -15,7 +16,7 @@ export default function TodayStatusCard({ entry }: TodayStatusCardProps) {
   if (!entry) {
     return (
       <View style={[styles.container, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
-        <Text style={[styles.label, { color: colors.textMuted }]}>Today Status</Text>
+        <Text style={[styles.label, { color: colors.textMuted }]}>Today's Session</Text>
         <View style={styles.emptyRow}>
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Not logged yet</Text>
         </View>
@@ -36,7 +37,7 @@ export default function TodayStatusCard({ entry }: TodayStatusCardProps) {
         isWent && { borderColor: colors.primaryBorder },
       ]}
     >
-      <Text style={[styles.label, { color: colors.textMuted }]}>Today Status</Text>
+      <Text style={[styles.label, { color: colors.textMuted }]}>Today's Session</Text>
 
       <View style={styles.statusRow}>
         <View style={styles.statusLeft}>
@@ -45,7 +46,7 @@ export default function TodayStatusCard({ entry }: TodayStatusCardProps) {
           </Text>
           {loggedTime && (
             <Text style={[styles.timeText, { color: colors.textSecondary }]}>
-              Logged at {loggedTime} · Session saved
+              Logged at {loggedTime}
             </Text>
           )}
         </View>
@@ -58,6 +59,12 @@ export default function TodayStatusCard({ entry }: TodayStatusCardProps) {
 
       {isWent && entry.split && (
         <SplitIcon split={entry.split} />
+      )}
+      
+      {entry.notes && (
+        <Text style={[styles.notes, { color: colors.textSecondary }]} numberOfLines={2}>
+          {entry.notes}
+        </Text>
       )}
     </View>
   );
@@ -111,5 +118,10 @@ const styles = StyleSheet.create({
   checkText: {
     fontSize: 18,
     fontWeight: '800',
+  },
+  notes: {
+    fontSize: 13,
+    fontStyle: 'italic',
+    marginTop: 4,
   },
 });

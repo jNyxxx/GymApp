@@ -3,6 +3,7 @@ export const APP_NAME = 'We Go Gym';
 export const STORAGE_KEYS = {
   ENTRIES: 'gym_entries',
   SETTINGS: 'app_settings',
+  CUSTOM_SPLITS: 'custom_splits',
 };
 
 export const DEFAULT_RESET_HOUR = 6;
@@ -17,6 +18,8 @@ export const DARK_COLORS = {
   cardBgAlt: '#0f1525',
   cardBorder: '#1e2a3a',
   cardBorderSubtle: '#1a2332',
+  inputBg: '#0b1220',
+  inputBorder: '#223047',
   primaryBorder: 'rgba(0, 212, 255, 0.3)',
   primary: '#00D4FF',
   primaryDark: '#0099CC',
@@ -48,6 +51,8 @@ export const LIGHT_COLORS = {
   cardBgAlt: '#F8F9FC',
   cardBorder: '#E2E8F0',
   cardBorderSubtle: '#EDF2F7',
+  inputBg: '#FFFFFF',
+  inputBorder: '#D7DEE8',
   primaryBorder: 'rgba(0, 120, 255, 0.25)',
   primary: '#0078FF',
   primaryDark: '#0060CC',

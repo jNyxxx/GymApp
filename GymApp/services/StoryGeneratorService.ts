@@ -67,7 +67,8 @@ export class StoryGeneratorService {
 
   private static getMostTrainedSplitLine(stats: MonthlyStats): string {
     if (!stats.mostTrainedSplit) return '';
-    const splitName = SPLIT_LABELS[stats.mostTrainedSplit.split];
+    const splitName = SPLIT_LABELS[stats.mostTrainedSplit.split as keyof typeof SPLIT_LABELS]
+      || stats.mostTrainedSplit.split.replace(/^(custom_|template_)/, '').replace(/_\d+$/, '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     return `${splitName} was your go-to split with ${stats.mostTrainedSplit.count} session${stats.mostTrainedSplit.count > 1 ? 's' : ''}.`;
   }
 

@@ -1,27 +1,28 @@
 import { useState, useEffect, useCallback } from 'react';
 import { GymEntry } from '../models/GymEntry';
-import { GymLogService } from '../services/GymLogService';
 import { SummaryService, MonthlyStats } from '../services/SummaryService';
 import { getMonthKey, getPreviousMonth, getNextMonth, formatMonthLabel } from '../services/DateLogicService';
+import { useGymStore } from '../context/GymStore';
 
 export function useSummaryViewModel() {
   const [currentMonth, setCurrentMonth] = useState(getMonthKey());
   const [stats, setStats] = useState<MonthlyStats | null>(null);
-  const [allEntries, setAllEntries] = useState<GymEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadData = useCallback(async (monthKey: string) => {
+  // Use global store for reactive updates across tabs
+  const allEntries = useGymStore((state) => state.entries);
+
+  const loadData = useCallback((entries: GymEntry[], monthKey: string) => {
     setLoading(true);
-    const entries = await GymLogService.getAllEntries();
-    setAllEntries(entries);
     const monthlyStats = SummaryService.getMonthlyStats(entries, monthKey);
     setStats(monthlyStats);
     setLoading(false);
   }, []);
 
+  // Reactively update when store entries change
   useEffect(() => {
-    loadData(currentMonth);
-  }, [currentMonth, loadData]);
+    loadData(allEntries, currentMonth);
+  }, [allEntries, currentMonth, loadData]);
 
   const goToPrevMonth = () => {
     setCurrentMonth(getPreviousMonth(currentMonth));
@@ -41,6 +42,6 @@ export function useSummaryViewModel() {
     monthLabel,
     goToPrevMonth,
     goToNextMonth,
-    refresh: () => loadData(currentMonth),
+    refresh: () => loadData(allEntries, currentMonth),
   };
 }

@@ -38,6 +38,51 @@ describe('schemas', () => {
       expect(result.success).toBe(true);
     });
 
+    it('validates entry with exercise performance logs', () => {
+      const entry = {
+        id: '2026-04-06',
+        dateKey: '2026-04-06',
+        status: GymStatus.WENT,
+        split: 'template_push_day',
+        notes: 'Solid session',
+        exerciseLogs: [
+          {
+            exerciseId: 'ex_bench',
+            exerciseName: 'Bench Press',
+            sets: [
+              { setNumber: 1, reps: '10', weight: '60', completed: true },
+              { setNumber: 2, reps: '8', weight: '65', completed: true },
+            ],
+          },
+        ],
+        loggedAt: '2026-04-06T10:30:00.000Z',
+      };
+
+      const result = GymEntrySchema.safeParse(entry);
+      expect(result.success).toBe(true);
+    });
+
+    it('rejects malformed exercise performance logs', () => {
+      const entry = {
+        id: '2026-04-06',
+        dateKey: '2026-04-06',
+        status: GymStatus.WENT,
+        exerciseLogs: [
+          {
+            exerciseId: 'ex_bench',
+            exerciseName: 'Bench Press',
+            sets: [
+              { setNumber: '1', reps: '10', weight: '60', completed: true },
+            ],
+          },
+        ],
+        loggedAt: '2026-04-06T10:30:00.000Z',
+      };
+
+      const result = GymEntrySchema.safeParse(entry);
+      expect(result.success).toBe(false);
+    });
+
     it('rejects invalid date key format', () => {
       const entry = {
         id: '2026-04-06',
@@ -81,6 +126,7 @@ describe('schemas', () => {
         reminderHour: 18,
         reminderMinute: 30,
         resetHour: 6,
+        resetMinute: 0,
       };
       
       const result = AppSettingsSchema.safeParse(settings);
@@ -94,6 +140,7 @@ describe('schemas', () => {
         reminderHour: 18,
         reminderMinute: 30,
         resetHour: 6,
+        resetMinute: 0,
       };
       
       const result = AppSettingsSchema.safeParse(settings);
@@ -107,6 +154,7 @@ describe('schemas', () => {
         reminderHour: 25, // Invalid
         reminderMinute: 30,
         resetHour: 6,
+        resetMinute: 0,
       };
       
       const result = AppSettingsSchema.safeParse(settings);
@@ -145,11 +193,30 @@ describe('schemas', () => {
           reminderHour: 18,
           reminderMinute: 0,
           resetHour: 6,
+          resetMinute: 0,
         },
       };
       
       const result = ExportDataSchema.safeParse(exportData);
       expect(result.success).toBe(true);
+    });
+
+    it('rejects export data with incomplete settings', () => {
+      const exportData = {
+        version: 1,
+        exportedAt: '2026-04-06T10:30:00.000Z',
+        entries: [],
+        settings: {
+          theme: 'light',
+          remindersEnabled: false,
+          reminderHour: 18,
+          reminderMinute: 0,
+          resetHour: 6,
+        },
+      };
+
+      const result = ExportDataSchema.safeParse(exportData);
+      expect(result.success).toBe(false);
     });
   });
 
@@ -198,6 +265,43 @@ describe('schemas', () => {
       
       const result = validateExportData(data);
       expect(result.success).toBe(true);
+    });
+
+    it('validates export envelope with current settings fields', () => {
+      const data = {
+        version: CURRENT_DATA_VERSION,
+        exportedAt: new Date().toISOString(),
+        entries: [],
+        settings: {
+          theme: 'dark',
+          remindersEnabled: true,
+          reminderHour: 20,
+          reminderMinute: 15,
+          resetHour: 5,
+          resetMinute: 45,
+        },
+      };
+
+      const result = validateExportData(data);
+      expect(result.success).toBe(true);
+    });
+
+    it('rejects settings missing resetMinute in export envelope', () => {
+      const data = {
+        version: CURRENT_DATA_VERSION,
+        exportedAt: new Date().toISOString(),
+        entries: [],
+        settings: {
+          theme: 'dark',
+          remindersEnabled: true,
+          reminderHour: 20,
+          reminderMinute: 15,
+          resetHour: 5,
+        },
+      };
+
+      const result = validateExportData(data);
+      expect(result.success).toBe(false);
     });
   });
 

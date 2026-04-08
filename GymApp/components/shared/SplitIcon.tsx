@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import { useColors } from '../../context/ThemeContext';
 
 interface SplitIconProps {
-  split: 'upper' | 'lower' | 'push' | 'pull' | 'legs' | 'posterior' | 'anterior';
+  split: string;
   size?: 'sm' | 'md' | 'lg';
   style?: ViewStyle;
 }
@@ -29,6 +29,38 @@ export default function SplitIcon({ split, size = 'md', style }: SplitIconProps)
   };
 
   const s = sizes[size];
+
+  // For custom/template splits, show first 2 letters
+  if (!data) {
+    const label = getCustomLabel(split);
+    return (
+      <View
+        style={[
+          styles.container,
+          {
+            width: s.container,
+            height: s.container,
+            borderRadius: s.container / 2,
+            backgroundColor: colors.primaryGlow,
+            borderColor: colors.primary + '40',
+          },
+          style,
+        ]}
+      >
+        <Text
+          style={[
+            styles.text,
+            {
+              fontSize: s.font,
+              color: colors.primary,
+            },
+          ]}
+        >
+          {label}
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View
@@ -57,6 +89,16 @@ export default function SplitIcon({ split, size = 'md', style }: SplitIconProps)
       </Text>
     </View>
   );
+}
+
+function getCustomLabel(splitId: string): string {
+  // Extract label from template_chest_day_123456 -> CD
+  // Or custom_arms_123456 -> AR
+  const parts = splitId.replace(/^(template_|custom_)/, '').split('_');
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return parts[0].substring(0, 2).toUpperCase();
 }
 
 const styles = StyleSheet.create({

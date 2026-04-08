@@ -1,9 +1,11 @@
-import React from 'react';
-import { ScrollView, StyleSheet, View, RefreshControl } from 'react-native';
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet, View, RefreshControl, TouchableOpacity, Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useCalendarViewModel } from '../../viewModels/CalendarViewModel';
 import CalendarHeader from '../../components/calendar/CalendarHeader';
 import CalendarGrid from '../../components/calendar/CalendarGrid';
 import DayDetailSheet from '../../components/calendar/DayDetailSheet';
+import AddSessionSheet from '../../components/calendar/AddSessionSheet';
 import { useColors, useTheme } from '../../context/ThemeContext';
 import { useGymStore } from '../../context/GymStore';
 
@@ -12,6 +14,7 @@ export default function CalendarView() {
   const { settings } = useTheme();
   const refreshing = useGymStore((state) => state.refreshing);
   const storeRefresh = useGymStore((state) => state.refresh);
+  const [showAddSession, setShowAddSession] = useState(false);
   
   const {
     currentMonth,
@@ -53,7 +56,7 @@ export default function CalendarView() {
       >
         <CalendarHeader
           monthLabel={monthLabel}
-          subtitle="Tap a day to view the session you picked"
+          subtitle="Tap a day to view or edit its session"
           onPrev={goToPrevMonth}
           onNext={goToNextMonth}
         />
@@ -78,10 +81,32 @@ export default function CalendarView() {
         entry={selectedEntry}
         onClose={closeDayDetail}
         onEntryUpdated={async () => {
+          await storeRefresh(settings.resetHour, settings.resetMinute);
           await refresh();
           closeDayDetail();
         }}
       />
+
+      <AddSessionSheet
+        visible={showAddSession}
+        onClose={() => setShowAddSession(false)}
+        onSaved={async () => {
+          await storeRefresh(settings.resetHour, settings.resetMinute);
+          await refresh();
+          setShowAddSession(false);
+        }}
+      />
+
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: colors.primary }]}
+        onPress={() => setShowAddSession(true)}
+        accessibilityLabel="Add custom session"
+        accessibilityHint="Opens the add session sheet"
+        accessibilityRole="button"
+      >
+        <Ionicons name="add" size={28} color="#FFFFFF" />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -94,12 +119,27 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     paddingLeft: 20,
     paddingRight: 20,
-    paddingBottom: 80,
+    paddingBottom: 96,
     gap: 20,
   },
   calendarCard: {
     borderRadius: 20,
-    padding: 16,
+    padding: 20,
     borderWidth: 1,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
 });

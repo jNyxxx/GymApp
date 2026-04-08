@@ -22,7 +22,7 @@ interface GymStore {
 
   // Actions
   initialize: (resetHour?: number, resetMinute?: number) => Promise<void>;
-  saveEntry: (status: GymStatus, split?: WorkoutSplit, dateKey?: string, resetHour?: number, resetMinute?: number) => Promise<GymEntry>;
+  saveEntry: (status: GymStatus, split?: WorkoutSplit | string, dateKey?: string, resetHour?: number, resetMinute?: number) => Promise<GymEntry>;
   deleteEntry: (dateKey: string, resetHour?: number, resetMinute?: number) => Promise<void>;
   refresh: (resetHour?: number, resetMinute?: number) => Promise<void>;
   clearAllData: () => Promise<void>;

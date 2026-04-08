@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { GymEntry } from '../models/GymEntry';
 import { GymLogService } from '../services/GymLogService';
 import {
@@ -10,27 +10,24 @@ import {
   getGymDateKey,
 } from '../services/DateLogicService';
 import { useTheme } from '../context/ThemeContext';
+import { useGymStore } from '../context/GymStore';
 
 export function useCalendarViewModel() {
   const { settings } = useTheme();
   const [currentMonth, setCurrentMonth] = useState(getMonthKey());
-  const [entries, setEntries] = useState<GymEntry[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
   const [showDayDetail, setShowDayDetail] = useState(false);
 
+  // Use global store for entries - auto-updates when home logs a session
+  const allEntries = useGymStore((state) => state.entries);
+  const storeRefresh = useGymStore((state) => state.refresh);
+
   const todayKey = getGymDateKey(new Date(), settings.resetHour);
 
-  const loadMonth = useCallback(async (monthKey: string) => {
-    setLoading(true);
-    const monthEntries = await GymLogService.getMonthEntries(monthKey);
-    setEntries(monthEntries);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    loadMonth(currentMonth);
-  }, [currentMonth, loadMonth]);
+  // Filter entries for current month
+  const entries = useMemo(() => {
+    return allEntries.filter((e) => e.dateKey.startsWith(currentMonth));
+  }, [allEntries, currentMonth]);
 
   const goToPrevMonth = () => {
     setCurrentMonth(getPreviousMonth(currentMonth));
@@ -45,9 +42,8 @@ export function useCalendarViewModel() {
     setShowDayDetail(true);
   };
 
-  const closeDayDetail = async () => {
+  const closeDayDetail = () => {
     setShowDayDetail(false);
-    await loadMonth(currentMonth);
   };
 
   const getEntryForDate = (dateKey: string): GymEntry | undefined => {
@@ -59,7 +55,7 @@ export function useCalendarViewModel() {
   return {
     currentMonth,
     entries,
-    loading,
+    loading: false,
     monthLabel,
     selectedDateKey,
     todayKey,
@@ -69,6 +65,6 @@ export function useCalendarViewModel() {
     openDayDetail,
     closeDayDetail,
     getEntryForDate,
-    refresh: () => loadMonth(currentMonth),
+    refresh: () => storeRefresh(settings.resetHour, settings.resetMinute),
   };
 }

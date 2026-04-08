@@ -10,11 +10,26 @@ import { WorkoutSplit } from './WorkoutSplit';
 // Date key format: YYYY-MM-DD
 const dateKeyRegex = /^\d{4}-\d{2}-\d{2}$/;
 
+export const SetPerformanceLogSchema = z.object({
+  setNumber: z.number().int().min(1),
+  reps: z.string(),
+  weight: z.string(),
+  completed: z.boolean(),
+});
+
+export const ExercisePerformanceLogSchema = z.object({
+  exerciseId: z.string().min(1),
+  exerciseName: z.string().min(1),
+  sets: z.array(SetPerformanceLogSchema),
+});
+
 export const GymEntrySchema = z.object({
   id: z.string().min(1),
   dateKey: z.string().regex(dateKeyRegex, 'Date must be in YYYY-MM-DD format'),
   status: z.nativeEnum(GymStatus),
-  split: z.nativeEnum(WorkoutSplit).optional(),
+  split: z.union([z.nativeEnum(WorkoutSplit), z.string()]).optional(),
+  notes: z.string().optional(),
+  exerciseLogs: z.array(ExercisePerformanceLogSchema).optional(),
   loggedAt: z.string().datetime({ offset: true }).or(z.string().datetime()),
 });
 
@@ -26,6 +41,7 @@ export const AppSettingsSchema = z.object({
   reminderHour: z.number().int().min(0).max(23),
   reminderMinute: z.number().int().min(0).max(59),
   resetHour: z.number().int().min(0).max(23),
+  resetMinute: z.number().int().min(0).max(59),
 });
 
 // For partial settings updates

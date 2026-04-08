@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GymEntry } from '../models/GymEntry';
 import { GymStatus } from '../models/GymStatus';
 import { WorkoutSplit } from '../models/WorkoutSplit';
+import { ExercisePerformanceLog } from '../models/ExerciseLog';
 import { STORAGE_KEYS } from '../constants/Constants';
 import { getGymDateKey } from '../services/DateLogicService';
 import { 
@@ -49,18 +50,38 @@ export class GymLogService {
    */
   static async saveEntry(
     status: GymStatus,
-    split?: WorkoutSplit,
-    dateKey?: string
+    split?: WorkoutSplit | string,
+    dateKey?: string,
+    notes?: string,
+    loggedAt?: string,
+    exerciseLogs?: ExercisePerformanceLog[]
   ): Promise<GymEntry> {
     const entries = await this.getAllEntries();
     const key = dateKey || getGymDateKey();
+    const normalizedExerciseLogs =
+      status === GymStatus.WENT
+        ? exerciseLogs
+            ?.map((exercise) => ({
+              exerciseId: exercise.exerciseId,
+              exerciseName: exercise.exerciseName.trim() || 'Exercise',
+              sets: exercise.sets.map((set) => ({
+                setNumber: set.setNumber,
+                reps: set.reps.trim(),
+                weight: set.weight.trim(),
+                completed: Boolean(set.completed),
+              })),
+            }))
+            .filter((exercise) => exercise.sets.length > 0)
+        : undefined;
 
     const newEntry: GymEntry = {
       id: `${key}`,
       dateKey: key,
       status,
       split,
-      loggedAt: new Date().toISOString(),
+      notes: notes?.trim() || undefined,
+      exerciseLogs: normalizedExerciseLogs?.length ? normalizedExerciseLogs : undefined,
+      loggedAt: loggedAt || new Date().toISOString(),
     };
 
     // Remove existing entry for this date (latest tap wins)
@@ -72,11 +93,36 @@ export class GymLogService {
   }
 
   /**
+   * Update notes for an existing entry.
+   */
+  static async updateNotes(dateKey: string, notes: string): Promise<GymEntry | null> {
+    const entries = await this.getAllEntries();
+    const entryIndex = entries.findIndex((e) => e.dateKey === dateKey);
+    
+    if (entryIndex === -1) return null;
+    
+    entries[entryIndex] = {
+      ...entries[entryIndex],
+      notes: notes.trim() || undefined,
+    };
+    
+    await AsyncStorage.setItem(STORAGE_KEYS.ENTRIES, JSON.stringify(entries));
+    return entries[entryIndex];
+  }
+
+  /**
    * Get a specific entry by its date key.
    */
   static async getEntry(dateKey: string): Promise<GymEntry | null> {
     const entries = await this.getAllEntries();
     return entries.find((e) => e.dateKey === dateKey) || null;
+  }
+
+  /**
+   * Backward-compatible alias for getEntry.
+   */
+  static async getEntryByDate(dateKey: string): Promise<GymEntry | null> {
+    return this.getEntry(dateKey);
   }
 
   /**

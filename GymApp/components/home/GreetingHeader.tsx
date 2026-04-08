@@ -1,13 +1,18 @@
 import React from 'react';
 import { View, Text, StyleSheet, StatusBar } from 'react-native';
-import { useColors } from '../../context/ThemeContext';
+import { useColors, useTheme } from '../../context/ThemeContext';
+import { getGymDateKey, parseDateKey } from '../../services/DateLogicService';
 
 export default function GreetingHeader() {
   const colors = useColors();
+  const { settings } = useTheme();
 
-  const today = new Date();
+  // Use the effective gym date (respects reset hour)
+  const effectiveDateKey = getGymDateKey(new Date(), settings.resetHour, settings.resetMinute);
+  const effectiveDate = parseDateKey(effectiveDateKey);
+  
   const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  const gymDayLabel = `Gym day: ${months[today.getMonth()]} ${today.getDate()}`;
+  const gymDayLabel = `Gym day: ${months[effectiveDate.getMonth()]} ${effectiveDate.getDate()}`;
 
   return (
     <View style={[styles.container, { paddingTop: StatusBar.currentHeight || 20 }]}>

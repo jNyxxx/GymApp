@@ -1,75 +1,50 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { GymStatus } from '../models/GymStatus';
 import { WorkoutSplit } from '../models/WorkoutSplit';
-import { GymEntry } from '../models/GymEntry';
+import { ExercisePerformanceLog } from '../models/ExerciseLog';
 import { GymLogService } from '../services/GymLogService';
-import { getGymDateKey, getMonthKey } from '../services/DateLogicService';
-import { StreakService } from '../services/StreakService';
-import { SummaryService, MonthlyStats } from '../services/SummaryService';
+import { getMonthKey } from '../services/DateLogicService';
 import { useTheme } from '../context/ThemeContext';
+import { useGymStore } from '../context/GymStore';
 
 /**
  * ViewModel for the Home screen.
  */
 export function useHomeViewModel() {
   const { settings } = useTheme();
-  const [todayEntry, setTodayEntry] = useState<GymEntry | null>(null);
-  const [loading, setLoading] = useState(true);
   const [showSplitPicker, setShowSplitPicker] = useState(false);
-  const [currentStreak, setCurrentStreak] = useState(0);
-  const [bestStreak, setBestStreak] = useState(0);
-  const [monthlyStats, setMonthlyStats] = useState<MonthlyStats | null>(null);
-  const [showOverwriteConfirm, setShowOverwriteConfirm] = useState(false);
 
-  const todayKey = getGymDateKey(new Date(), settings.resetHour);
+  // Use global store for reactive updates
+  const todayEntry = useGymStore((state) => state.todayEntry);
+  const currentStreak = useGymStore((state) => state.currentStreak);
+  const bestStreak = useGymStore((state) => state.bestStreak);
+  const monthlyStats = useGymStore((state) => state.monthlyStats);
+  const loading = useGymStore((state) => state.loading);
+  const storeRefresh = useGymStore((state) => state.refresh);
+
   const monthKey = getMonthKey();
 
-  const loadAll = useCallback(async () => {
-    setLoading(true);
-
-    const entry = await GymLogService.getEntry(todayKey);
-    setTodayEntry(entry);
-
-    const allEntries = await GymLogService.getAllEntries();
-
-    const streak = StreakService.calculateCurrentStreak(allEntries);
-    const best = StreakService.calculateBestStreak(allEntries);
-    setCurrentStreak(streak);
-    setBestStreak(best);
-
-    const stats = SummaryService.getMonthlyStats(allEntries, monthKey);
-    setMonthlyStats(stats);
-
-    setLoading(false);
-  }, [todayKey, monthKey]);
-
-  useEffect(() => {
-    loadAll();
-  }, [loadAll]);
-
-  const confirmAndSaveWentGym = async (split: WorkoutSplit) => {
-    await GymLogService.saveEntry(GymStatus.WENT, split);
+  const confirmAndSaveWentGym = async (
+    split: WorkoutSplit | string,
+    notes?: string,
+    exerciseLogs?: ExercisePerformanceLog[]
+  ) => {
+    await GymLogService.saveEntry(GymStatus.WENT, split, undefined, notes, undefined, exerciseLogs);
     setShowSplitPicker(false);
-    setShowOverwriteConfirm(false);
-    await loadAll();
+    await storeRefresh(settings.resetHour, settings.resetMinute);
   };
 
   const confirmAndSaveNoGym = async () => {
     await GymLogService.saveEntry(GymStatus.NO_GYM);
-    setShowOverwriteConfirm(false);
-    await loadAll();
+    await storeRefresh(settings.resetHour, settings.resetMinute);
   };
 
   const openSplitPicker = () => {
-    if (todayEntry) {
-      setShowOverwriteConfirm(true);
-    } else {
-      setShowSplitPicker(true);
-    }
+    if (todayEntry) return;
+    setShowSplitPicker(true);
   };
 
   const closeSplitPicker = () => setShowSplitPicker(false);
-  const closeOverwriteConfirm = () => setShowOverwriteConfirm(false);
 
   const [year, month] = monthKey.split('-').map(Number);
   const daysInMonth = new Date(year, month, 0).getDate();
@@ -78,7 +53,6 @@ export function useHomeViewModel() {
     todayEntry,
     loading,
     showSplitPicker,
-    showOverwriteConfirm,
     currentStreak,
     bestStreak,
     monthlyStats,
@@ -87,7 +61,6 @@ export function useHomeViewModel() {
     confirmAndSaveNoGym,
     openSplitPicker,
     closeSplitPicker,
-    closeOverwriteConfirm,
-    refresh: loadAll,
+    refresh: () => storeRefresh(settings.resetHour, settings.resetMinute),
   };
 }

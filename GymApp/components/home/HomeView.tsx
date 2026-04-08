@@ -1,12 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
   View,
-  Modal,
-  TouchableOpacity,
-  Text,
-  SafeAreaView,
   RefreshControl,
 } from 'react-native';
 import { useHomeViewModel } from '../../viewModels/HomeViewModel';
@@ -20,16 +16,19 @@ import StreakCard from '../../components/home/StreakCard';
 import MonthlyProgressCard from '../../components/home/MonthlyProgressCard';
 import MonthlyStoryCard from '../../components/home/MonthlyStoryCard';
 import { HomeScreenSkeleton } from '../../components/shared/Skeleton';
+import AchievementToast from '../../components/shared/AchievementToast';
+import { Achievement } from '../../models/Achievement';
+import { AchievementService } from '../../services/AchievementService';
+import { GymLogService } from '../../services/GymLogService';
 import { useColors } from '../../context/ThemeContext';
 
 export default function HomeView() {
   const colors = useColors();
   const { settings } = useTheme();
-  const {
+    const {
     todayEntry,
     loading,
     showSplitPicker,
-    showOverwriteConfirm,
     currentStreak,
     bestStreak,
     monthlyStats,
@@ -38,7 +37,6 @@ export default function HomeView() {
     confirmAndSaveNoGym,
     openSplitPicker,
     closeSplitPicker,
-    closeOverwriteConfirm,
     refresh,
   } = useHomeViewModel();
 
@@ -47,9 +45,29 @@ export default function HomeView() {
   const refreshing = useGymStore((state) => state.refreshing);
   const storeRefresh = useGymStore((state) => state.refresh);
 
+  // Achievement toast state
+  const [achievementToShow, setAchievementToShow] = useState<Achievement | null>(null);
+  const [showAchievementToast, setShowAchievementToast] = useState(false);
+
   useEffect(() => {
     initialize(settings.resetHour, settings.resetMinute);
   }, [initialize, settings.resetHour]);
+
+  // Check for new achievements when todayEntry changes
+  useEffect(() => {
+    const checkAchievements = async () => {
+      if (todayEntry) {
+        const entries = await GymLogService.getAllEntries();
+        const newAchievements = await AchievementService.checkAchievements(entries);
+        if (newAchievements.length > 0) {
+          // Show the first new achievement
+          setAchievementToShow(newAchievements[0]);
+          setShowAchievementToast(true);
+        }
+      }
+    };
+    checkAchievements();
+  }, [todayEntry?.id]);
 
   const handleRefresh = () => {
     storeRefresh(settings.resetHour, settings.resetMinute);
@@ -99,60 +117,21 @@ export default function HomeView() {
         )}
       </ScrollView>
 
-      {/* Overwrite Confirmation Modal */}
-      <Modal
-        visible={showOverwriteConfirm}
-        transparent
-        animationType="fade"
-        onRequestClose={closeOverwriteConfirm}
-        accessibilityViewIsModal
-      >
-        <SafeAreaView style={[styles.overlay, { backgroundColor: colors.overlay }]}>
-          <TouchableOpacity 
-            style={styles.backdrop} 
-            activeOpacity={1} 
-            onPress={closeOverwriteConfirm}
-            accessibilityLabel="Close dialog"
-            accessibilityRole="button"
-          />
-          <View 
-            style={[styles.confirmCard, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}
-            accessibilityRole="alert"
-          >
-            <Text style={[styles.confirmTitle, { color: colors.text }]}>Already logged today</Text>
-            <Text style={[styles.confirmText, { color: colors.textSecondary }]}>
-              You already have a session logged for today. Do you want to overwrite it?
-            </Text>
-            <View style={styles.confirmActions}>
-              <TouchableOpacity
-                style={[styles.confirmCancel, { backgroundColor: colors.gray }]}
-                onPress={closeOverwriteConfirm}
-                accessibilityRole="button"
-                accessibilityLabel="Cancel"
-              >
-                <Text style={[styles.confirmCancelText, { color: colors.textSecondary }]}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.confirmOverwrite, { backgroundColor: colors.primary }]}
-                onPress={() => {
-                  closeOverwriteConfirm();
-                  openSplitPicker();
-                }}
-                accessibilityRole="button"
-                accessibilityLabel="Overwrite existing entry"
-              >
-                <Text style={styles.confirmOverwriteText}>Overwrite</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </SafeAreaView>
-      </Modal>
-
       <SplitPickerSheet
         visible={showSplitPicker}
         onSelect={confirmAndSaveWentGym}
         onClose={closeSplitPicker}
         currentSplit={todayEntry?.split}
+        currentNotes={todayEntry?.notes}
+      />
+
+      <AchievementToast
+        achievement={achievementToShow}
+        visible={showAchievementToast}
+        onHide={() => {
+          setShowAchievementToast(false);
+          setAchievementToShow(null);
+        }}
       />
     </View>
   );
@@ -163,61 +142,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingTop: 12,
+    paddingTop: 24,
     paddingLeft: 20,
     paddingRight: 20,
-    paddingBottom: 80,
+    paddingBottom: 96,
     gap: 16,
-  },
-  overlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backdrop: {
-    flex: 1,
-  },
-  confirmCard: {
-    marginHorizontal: 40,
-    borderRadius: 20,
-    padding: 24,
-    borderWidth: 1,
-    gap: 16,
-  },
-  confirmTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  confirmText: {
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: 'center',
-  },
-  confirmActions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 4,
-  },
-  confirmCancel: {
-    flex: 1,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  confirmCancelText: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  confirmOverwrite: {
-    flex: 1,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  confirmOverwriteText: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#000',
   },
 });
