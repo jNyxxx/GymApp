@@ -13,10 +13,7 @@ import StoryCard from '../../components/summary/StoryCard';
 import ProgressionInsightsCard from '../../components/summary/ProgressionInsightsCard';
 import { useColors, useTheme } from '../../context/ThemeContext';
 import { useGymStore } from '../../context/GymStore';
-import { GoalProgress } from '../../models/Goal';
-import { GoalService } from '../../services/GoalService';
 import { screenContentStyle } from '../../constants/DesignSystem';
-import GoalsProgressCard from '../goals/GoalsProgressCard';
 import EmptyState from '../shared/EmptyState';
 
 export default function SummaryView() {
@@ -24,8 +21,7 @@ export default function SummaryView() {
   const { settings } = useTheme();
   const refreshing = useGymStore((state) => state.refreshing);
   const storeRefresh = useGymStore((state) => state.refresh);
-  const [goalProgress, setGoalProgress] = React.useState<GoalProgress[]>([]);
-  
+
   const {
     stats,
     progressionInsights,
@@ -37,24 +33,6 @@ export default function SummaryView() {
     goToNextMonth,
     refresh,
   } = useSummaryViewModel();
-
-  const loadGoalProgress = React.useCallback(() => {
-    let mounted = true;
-    GoalService.getGoalProgress(allEntries, currentMonth).then((progress) => {
-      if (mounted) setGoalProgress(progress);
-    });
-    return () => {
-      mounted = false;
-    };
-  }, [allEntries, currentMonth]);
-
-  React.useEffect(() => loadGoalProgress(), [loadGoalProgress]);
-
-  useFocusEffect(
-    React.useCallback(() => {
-      return loadGoalProgress();
-    }, [loadGoalProgress])
-  );
 
   const handleRefresh = () => {
     storeRefresh(settings.resetHour, settings.resetMinute);
@@ -108,7 +86,6 @@ export default function SummaryView() {
       />
 
       <SummaryCard stats={stats} />
-      <GoalsProgressCard progressItems={goalProgress} title="Goals this month" />
       {progressionInsights && <ProgressionInsightsCard insights={progressionInsights} />}
       <AttendanceChartCard entries={allEntries} monthKey={currentMonth} />
       <SplitDistributionCard entries={allEntries} monthKey={currentMonth} />

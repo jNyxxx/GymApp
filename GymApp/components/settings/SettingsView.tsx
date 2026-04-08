@@ -15,7 +15,6 @@ import { FileExportService } from '../../services/FileExportService';
 import { formatResetHour } from '../../services/DateLogicService';
 import { useGymStore } from '../../context/GymStore';
 import TimePickerSheet from '../shared/TimePickerSheet';
-import GoalsSettingsCard from './GoalsSettingsCard';
 
 export default function SettingsView() {
   const { settings, toggleTheme, updateSettings } = useTheme();
@@ -277,9 +276,6 @@ export default function SettingsView() {
           If you log before the reset hour, it counts as the previous day.
         </Text>
       </View>
-
-      {/* Goals */}
-      <GoalsSettingsCard entries={entries} />
 
       {/* Data Management */}
       <View style={[styles.card, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>

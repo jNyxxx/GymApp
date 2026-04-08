@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -7,7 +7,6 @@ import {
   Alert,
 } from 'react-native';
 import { useHomeViewModel } from '../../viewModels/HomeViewModel';
-import { useFocusEffect } from '@react-navigation/native';
 import { useGymStore } from '../../context/GymStore';
 import { useTheme } from '../../context/ThemeContext';
 import GreetingHeader from '../../components/home/GreetingHeader';
@@ -20,13 +19,9 @@ import MonthlyStoryCard from '../../components/home/MonthlyStoryCard';
 import { HomeScreenSkeleton } from '../../components/shared/Skeleton';
 import AchievementToast from '../../components/shared/AchievementToast';
 import { Achievement } from '../../models/Achievement';
-import { GoalProgress } from '../../models/Goal';
 import { AchievementService } from '../../services/AchievementService';
-import { getMonthKey } from '../../services/DateLogicService';
-import { GoalService } from '../../services/GoalService';
 import { GymLogService } from '../../services/GymLogService';
 import { useColors } from '../../context/ThemeContext';
-import GoalsProgressCard from '../goals/GoalsProgressCard';
 import { screenContentStyle } from '../../constants/DesignSystem';
 
 export default function HomeView() {
@@ -58,7 +53,6 @@ export default function HomeView() {
   // Achievement toast state
   const [achievementToShow, setAchievementToShow] = useState<Achievement | null>(null);
   const [showAchievementToast, setShowAchievementToast] = useState(false);
-  const [goalProgress, setGoalProgress] = useState<GoalProgress[]>([]);
 
   useEffect(() => {
     initialize(settings.resetHour, settings.resetMinute);
@@ -79,24 +73,6 @@ export default function HomeView() {
     };
     checkAchievements();
   }, [todayEntry?.id]);
-
-  const loadGoalProgress = useCallback(() => {
-    let mounted = true;
-    GoalService.getGoalProgress(entries, getMonthKey()).then((progress) => {
-      if (mounted) setGoalProgress(progress);
-    });
-    return () => {
-      mounted = false;
-    };
-  }, [entries]);
-
-  useEffect(() => loadGoalProgress(), [loadGoalProgress]);
-
-  useFocusEffect(
-    useCallback(() => {
-      return loadGoalProgress();
-    }, [loadGoalProgress])
-  );
 
   const handleRefresh = () => {
     storeRefresh(settings.resetHour, settings.resetMinute);
@@ -159,8 +135,6 @@ export default function HomeView() {
                 mostTrainedSplit={monthlyStats.mostTrainedSplit || undefined}
               />
             )}
-
-            <GoalsProgressCard progressItems={goalProgress} compact title="Goal progress" />
 
             {monthlyStats && <MonthlyStoryCard stats={monthlyStats} />}
           </>

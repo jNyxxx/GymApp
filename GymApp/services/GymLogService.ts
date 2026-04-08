@@ -5,11 +5,9 @@ import { WorkoutSplit } from '../models/WorkoutSplit';
 import { ExercisePerformanceLog } from '../models/ExerciseLog';
 import { STORAGE_KEYS } from '../constants/Constants';
 import { EntryPolicyService, EntryWriteSource } from './EntryPolicyService';
-import { GoalService } from './GoalService';
-import { 
+import {
   CURRENT_DATA_VERSION,
   ValidatedExportData,
-  validateFitnessGoals,
 } from '../models/schemas';
 import { DataMigrationService } from './DataMigrationService';
 
@@ -180,15 +178,13 @@ export class GymLogService {
     const entries = await this.getAllEntries();
     const templates = await DataMigrationService.getTemplates();
     const settings = await DataMigrationService.getSettings();
-    const goals = await GoalService.getGoals();
-    
+
     const exportEnvelope: ValidatedExportData = {
       version: CURRENT_DATA_VERSION,
       exportedAt: new Date().toISOString(),
       entries,
       templates,
       settings,
-      goals,
     };
     
     return JSON.stringify(exportEnvelope, null, 2);
@@ -211,24 +207,6 @@ export class GymLogService {
         return { imported: 0, errors };
       }
 
-      let goalsToPersist: Awaited<ReturnType<typeof GoalService.getGoals>> | null = null;
-      let shouldClearGoals = false;
-      if (parsed && typeof parsed === 'object' && 'goals' in parsed) {
-        const rawGoals = (parsed as { goals?: unknown }).goals;
-        if (rawGoals == null) {
-          shouldClearGoals = true;
-        } else {
-          const goalsResult = validateFitnessGoals(rawGoals);
-          if (!goalsResult.success) {
-            errors.push('Invalid goals payload in import data');
-            return { imported: 0, errors };
-          }
-          goalsToPersist = goalsResult.data;
-        }
-      } else {
-        shouldClearGoals = true;
-      }
-
       await DataMigrationService.persistImportedData({
         entries: migrationResult.entries,
         templates: migrationResult.templates,
@@ -237,12 +215,6 @@ export class GymLogService {
 
       if (migrationResult.warnings.length > 0) {
         console.warn('[GymLogService] Import migration warnings:', migrationResult.warnings.join(' | '));
-      }
-
-      if (goalsToPersist) {
-        await GoalService.saveGoals(goalsToPersist);
-      } else if (shouldClearGoals) {
-        await GoalService.clearGoals();
       }
 
       return { imported: migrationResult.entries.length, errors: [] };
