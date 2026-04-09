@@ -68,6 +68,15 @@ export class EntryPolicyService {
     }
 
     if (source === 'home-quick-log') {
+      // Allow upgrading from NO_GYM to WENT (user changed their mind)
+      if (existingEntry.status === GymStatus.NO_GYM) {
+        return {
+          allowsWrite: true,
+          mode: 'replace',
+          requiresReplaceConfirmation: false,
+        };
+      }
+      // Block if already logged as WENT
       return {
         allowsWrite: false,
         mode: 'edit',

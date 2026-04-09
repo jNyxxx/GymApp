@@ -1,8 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Modal, SafeAreaView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../../context/ThemeContext';
 import { Achievement, ACHIEVEMENTS, UnlockedAchievement } from '../../models/Achievement';
 import { AchievementService } from '../../services/AchievementService';
+
+type IconName = keyof typeof Ionicons.glyphMap;
+
+const CATEGORY_ICONS: Record<string, IconName> = {
+  streak: 'flame',
+  milestone: 'trophy',
+  consistency: 'trending-up',
+  special: 'star',
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  streak: 'Streaks',
+  milestone: 'Milestones',
+  consistency: 'Consistency',
+  special: 'Special',
+};
 
 export default function AchievementsView() {
   const colors = useColors();
@@ -43,13 +60,6 @@ export default function AchievementsView() {
     categories[achievement.category].push(achievement);
   }
 
-  const categoryLabels: { [key: string]: string } = {
-    streak: '🔥 Streaks',
-    milestone: '🏆 Milestones',
-    consistency: '📈 Consistency',
-    special: '⭐ Special',
-  };
-
   const handleAchievementPress = (achievement: Achievement) => {
     const entry = unlockedEntries.find((e) => e.achievementId === achievement.id);
     setSelectedAchievement(achievement);
@@ -58,10 +68,10 @@ export default function AchievementsView() {
 
   const formatUnlockDate = (isoDate: string): string => {
     const date = new Date(isoDate);
-    return date.toLocaleDateString(undefined, { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
+    return date.toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
     });
   };
 
@@ -93,11 +103,11 @@ export default function AchievementsView() {
             </Text>
           </View>
           <View style={[styles.progressBarBg, { backgroundColor: colors.progressBarBg }]}>
-            <View 
+            <View
               style={[
-                styles.progressBarFill, 
+                styles.progressBarFill,
                 { backgroundColor: colors.primary, width: `${progressPercent}%` }
-              ]} 
+              ]}
             />
           </View>
           <Text style={[styles.progressText, { color: colors.textSecondary }]}>
@@ -108,9 +118,12 @@ export default function AchievementsView() {
         {/* Achievement Categories */}
         {Object.entries(categories).map(([category, achievements]) => (
           <View key={category} style={styles.categorySection}>
-            <Text style={[styles.categoryTitle, { color: colors.text }]}>
-              {categoryLabels[category]}
-            </Text>
+            <View style={styles.categoryHeader}>
+              <Ionicons name={CATEGORY_ICONS[category]} size={20} color={colors.text} />
+              <Text style={[styles.categoryTitle, { color: colors.text }]}>
+                {CATEGORY_LABELS[category]}
+              </Text>
+            </View>
             <View style={styles.achievementsGrid}>
               {achievements.map((achievement) => {
                 const isUnlocked = unlockedIds.has(achievement.id);
@@ -124,9 +137,11 @@ export default function AchievementsView() {
                     ]}
                     onPress={() => handleAchievementPress(achievement)}
                   >
-                    <Text style={[styles.achievementEmoji, !isUnlocked && styles.lockedEmoji]}>
-                      {isUnlocked ? achievement.emoji : '🔒'}
-                    </Text>
+                    <Ionicons
+                      name={isUnlocked ? (achievement.icon as IconName) : 'lock-closed-outline'}
+                      size={32}
+                      color={isUnlocked ? colors.primary : colors.textMuted}
+                    />
                     <Text
                       style={[
                         styles.achievementTitle,
@@ -138,7 +153,7 @@ export default function AchievementsView() {
                     </Text>
                     {isUnlocked && (
                       <View style={[styles.unlockedBadge, { backgroundColor: colors.primaryGlow }]}>
-                        <Text style={[styles.unlockedText, { color: colors.primary }]}>✓</Text>
+                        <Ionicons name="checkmark" size={12} color={colors.primary} />
                       </View>
                     )}
                   </TouchableOpacity>
@@ -157,20 +172,24 @@ export default function AchievementsView() {
         onRequestClose={() => setSelectedAchievement(null)}
       >
         <SafeAreaView style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
-          <TouchableOpacity 
-            style={styles.modalBackdrop} 
-            activeOpacity={1} 
-            onPress={() => setSelectedAchievement(null)} 
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setSelectedAchievement(null)}
           />
           {selectedAchievement && (
             <View style={[styles.modalContent, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
-              <Text style={styles.modalEmoji}>{selectedAchievement.emoji}</Text>
+              <Ionicons
+                name={selectedAchievement.icon as IconName}
+                size={64}
+                color={colors.primary}
+              />
               <Text style={[styles.modalTitle, { color: colors.text }]}>
                 {selectedAchievement.title}
               </Text>
-              
+
               <View style={[styles.divider, { backgroundColor: colors.cardBorder }]} />
-              
+
               <View style={styles.modalSection}>
                 <Text style={[styles.modalLabel, { color: colors.textMuted }]}>HOW TO UNLOCK</Text>
                 <Text style={[styles.modalDescription, { color: colors.textSecondary }]}>
@@ -180,17 +199,23 @@ export default function AchievementsView() {
 
               {selectedUnlockDate && (
                 <View style={[styles.unlockedInfo, { backgroundColor: colors.successBg }]}>
-                  <Text style={[styles.unlockedLabel, { color: colors.success }]}>
-                    ✓ Unlocked on {formatUnlockDate(selectedUnlockDate)}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                    <Text style={[styles.unlockedLabel, { color: colors.success }]}>
+                      Unlocked on {formatUnlockDate(selectedUnlockDate)}
+                    </Text>
+                  </View>
                 </View>
               )}
 
               {!selectedUnlockDate && (
                 <View style={[styles.lockedInfo, { backgroundColor: colors.cardBgAlt }]}>
-                  <Text style={[styles.lockedLabel, { color: colors.textSecondary }]}>
-                    🔒 Not yet unlocked
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="lock-closed-outline" size={16} color={colors.textSecondary} />
+                    <Text style={[styles.lockedLabel, { color: colors.textSecondary }]}>
+                      Not yet unlocked
+                    </Text>
+                  </View>
                   <Text style={[styles.lockedHint, { color: colors.textMuted }]}>
                     Keep going! You'll get there.
                   </Text>
@@ -263,6 +288,11 @@ const styles = StyleSheet.create({
   categorySection: {
     gap: 12,
   },
+  categoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   categoryTitle: {
     fontSize: 18,
     fontWeight: '800',
@@ -282,13 +312,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 8,
   },
-  achievementEmoji: {
-    fontSize: 32,
-  },
-  lockedEmoji: {
-    fontSize: 24,
-    opacity: 0.5,
-  },
   achievementTitle: {
     fontSize: 11,
     fontWeight: '700',
@@ -304,10 +327,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  unlockedText: {
-    fontSize: 12,
-    fontWeight: '800',
   },
   modalOverlay: {
     flex: 1,
@@ -328,9 +347,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     gap: 16,
-  },
-  modalEmoji: {
-    fontSize: 64,
   },
   modalTitle: {
     fontSize: 22,

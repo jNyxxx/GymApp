@@ -81,6 +81,7 @@ export class AchievementService {
   private static checkCondition(achievement: Achievement, entries: GymEntry[]): boolean {
     const { condition } = achievement;
     const wentEntries = entries.filter((e) => e.status === GymStatus.WENT);
+    const noGymEntries = entries.filter((e) => e.status === GymStatus.NO_GYM);
 
     switch (condition.type) {
       case 'first_session':
@@ -105,6 +106,25 @@ export class AchievementService {
           condition.value || 4,
           condition.weeks || 4
         );
+      }
+
+      case 'monthly_sessions': {
+        return this.checkMonthlySessions(wentEntries, condition.value || 15);
+      }
+
+      case 'split_mastery': {
+        if (condition.splitType === 'single') {
+          return this.checkSplitDedication(wentEntries, condition.value || 10);
+        }
+        return this.checkSplitMastery(wentEntries, condition.value || 7);
+      }
+
+      case 'rest_days': {
+        return noGymEntries.length >= (condition.value || 10);
+      }
+
+      case 'balance': {
+        return this.checkBalancedLife(entries, condition.value || 10);
       }
 
       default:
@@ -157,6 +177,110 @@ export class AchievementService {
       }
     }
 
+    return false;
+  }
+
+  /**
+   * Check if user has logged N sessions in any single calendar month.
+   */
+  private static checkMonthlySessions(
+    wentEntries: GymEntry[],
+    targetSessions: number
+  ): boolean {
+    if (wentEntries.length < targetSessions) return false;
+
+    // Group by month
+    const monthCounts: Map<string, number> = new Map();
+    for (const entry of wentEntries) {
+      const monthKey = getMonthKey(parseDateKey(entry.dateKey));
+      monthCounts.set(monthKey, (monthCounts.get(monthKey) || 0) + 1);
+    }
+
+    // Check if any month meets the target
+    for (const [, count] of monthCounts) {
+      if (count >= targetSessions) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Check if user has trained all N built-in splits in any single month.
+   */
+  private static checkSplitMastery(
+    wentEntries: GymEntry[],
+    targetSplits: number
+  ): boolean {
+    // Group splits by month
+    const monthSplits: Map<string, Set<string>> = new Map();
+    for (const entry of wentEntries) {
+      if (!entry.split) continue;
+      const monthKey = getMonthKey(parseDateKey(entry.dateKey));
+      if (!monthSplits.has(monthKey)) {
+        monthSplits.set(monthKey, new Set());
+      }
+      monthSplits.get(monthKey)!.add(entry.split!);
+    }
+
+    // Check if any month has all target splits
+    for (const [, splits] of monthSplits) {
+      if (splits.size >= targetSplits) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Check if user has hit the same split N times in any single month.
+   */
+  private static checkSplitDedication(
+    wentEntries: GymEntry[],
+    targetCount: number
+  ): boolean {
+    // Group split counts by month
+    const monthSplitCounts: Map<string, Map<string, number>> = new Map();
+    for (const entry of wentEntries) {
+      if (!entry.split) continue;
+      const monthKey = getMonthKey(parseDateKey(entry.dateKey));
+      if (!monthSplitCounts.has(monthKey)) {
+        monthSplitCounts.set(monthKey, new Map());
+      }
+      const splitMap = monthSplitCounts.get(monthKey)!;
+      splitMap.set(entry.split, (splitMap.get(entry.split) || 0) + 1);
+    }
+
+    // Check if any split was hit targetCount times in any month
+    for (const [, splitMap] of monthSplitCounts) {
+      for (const [, count] of splitMap) {
+        if (count >= targetCount) return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Check if user has equal WENT and NO_GYM days in any month (both >= target).
+   */
+  private static checkBalancedLife(
+    entries: GymEntry[],
+    target: number
+  ): boolean {
+    // Group by month
+    const monthWent: Map<string, number> = new Map();
+    const monthNoGym: Map<string, number> = new Map();
+
+    for (const entry of entries) {
+      const monthKey = getMonthKey(parseDateKey(entry.dateKey));
+      if (entry.status === GymStatus.WENT) {
+        monthWent.set(monthKey, (monthWent.get(monthKey) || 0) + 1);
+      } else if (entry.status === GymStatus.NO_GYM) {
+        monthNoGym.set(monthKey, (monthNoGym.get(monthKey) || 0) + 1);
+      }
+    }
+
+    // Check if any month has balanced counts
+    for (const [monthKey, wentCount] of monthWent) {
+      const noGymCount = monthNoGym.get(monthKey) || 0;
+      if (wentCount >= target && noGymCount >= target) return true;
+    }
     return false;
   }
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../../context/ThemeContext';
 import { Achievement } from '../../models/Achievement';
 
@@ -66,7 +67,7 @@ export default function AchievementToast({ achievement, visible, onHide }: Achie
         },
       ]}
     >
-      <Text style={styles.emoji}>{achievement.emoji}</Text>
+      <Ionicons name={achievement.icon as any} size={32} color={colors.primary} />
       <View style={styles.textContainer}>
         <Text style={[styles.label, { color: colors.primary }]}>Achievement Unlocked!</Text>
         <Text style={[styles.title, { color: colors.text }]}>{achievement.title}</Text>

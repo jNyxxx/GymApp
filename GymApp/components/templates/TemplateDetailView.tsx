@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,9 @@ import {
   Platform,
   Modal,
   SafeAreaView,
+  PanResponder,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../../context/ThemeContext';
@@ -26,12 +29,55 @@ interface TemplateDetailViewProps {
   onSaved: () => void;
 }
 
+const SCREEN_HEIGHT = Dimensions.get('window').height;
+const CARD_HEIGHT = 70; // Approximate collapsed card height
+
 export default function TemplateDetailView({ template, onBack, onSaved }: TemplateDetailViewProps) {
   const colors = useColors();
   const [exercises, setExercises] = useState<Exercise[]>(template.exercises);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showAddExerciseModal, setShowAddExerciseModal] = useState(false);
   const [newExerciseName, setNewExerciseName] = useState('');
+
+  // Swipe-back gesture
+  const SCREEN_WIDTH = Dimensions.get('window').width;
+  const swipeTranslateX = useRef(new Animated.Value(0)).current;
+  const swipeThreshold = SCREEN_WIDTH * 0.3;
+
+  const swipeBackPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return gestureState.dx > 15 && Math.abs(gestureState.dy) < 30;
+      },
+      onPanResponderMove: Animated.event([null, { dx: swipeTranslateX }], { useNativeDriver: false }),
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx > swipeThreshold || gestureState.vx > 0.5) {
+          Animated.timing(swipeTranslateX, {
+            toValue: SCREEN_WIDTH,
+            duration: 200,
+            useNativeDriver: false,
+          }).start(() => {
+            swipeTranslateX.setValue(0);
+            onBack();
+          });
+        } else {
+          Animated.spring(swipeTranslateX, {
+            toValue: 0,
+            useNativeDriver: false,
+            tension: 40,
+            friction: 8,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
+  // Drag state
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragStartY, setDragStartY] = useState(0);
+  const panY = useRef(new Animated.Value(0)).current;
+  const scrollViewRef = useRef<ScrollView>(null);
 
   // Auto-save exercises back to the template
   const saveExercises = useCallback(async (updated: Exercise[]) => {
@@ -79,15 +125,57 @@ export default function TemplateDetailView({ template, onBack, onSaved }: Templa
     saveExercises(updated);
   };
 
-  const handleReorderExercise = (id: string, direction: 'up' | 'down') => {
-    const idx = exercises.findIndex((e) => e.id === id);
-    if (idx < 0) return;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= exercises.length) return;
-    const updated = [...exercises];
-    [updated[idx], updated[swapIdx]] = [updated[swapIdx], updated[idx]];
-    setExercises(updated);
-    saveExercises(updated);
+  // --- Drag and Drop ---
+
+  const findTargetIndex = (deltaY: number): number => {
+    const currentIndex = exercises.findIndex((e) => e.id === draggingId);
+    if (currentIndex === -1) return 0;
+    const cardHeightWithGap = CARD_HEIGHT + 12;
+    const shift = Math.round(deltaY / cardHeightWithGap);
+    return Math.max(0, Math.min(currentIndex + shift, exercises.length - 1));
+  };
+
+  const handleDrop = (deltaY: number) => {
+    if (!draggingId) return;
+
+    const targetIndex = findTargetIndex(deltaY);
+    const currentIndex = exercises.findIndex((e) => e.id === draggingId);
+
+    if (currentIndex !== -1 && currentIndex !== targetIndex) {
+      const updated = [...exercises];
+      const [moved] = updated.splice(currentIndex, 1);
+      updated.splice(targetIndex, 0, moved);
+      setExercises(updated);
+      saveExercises(updated);
+    }
+
+    setDraggingId(null);
+    setDragStartY(0);
+    panY.setValue(0);
+  };
+
+  const handleDragStart = (exerciseId: string, y: number) => {
+    setDraggingId(exerciseId);
+    setDragStartY(y);
+    panY.setValue(0);
+    if (expandedId === exerciseId) setExpandedId(null);
+  };
+
+  const createPanResponder = (exerciseId: string) => {
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderMove: (_, gestureState) => {
+        if (draggingId !== exerciseId) return;
+        const deltaY = gestureState.moveY - dragStartY;
+        panY.setValue(deltaY);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (draggingId !== exerciseId) return;
+        const deltaY = gestureState.moveY - dragStartY;
+        handleDrop(deltaY);
+      },
+    });
   };
 
   // --- Per-Set CRUD ---
@@ -139,7 +227,8 @@ export default function TemplateDetailView({ template, onBack, onSaved }: Templa
   const totalSets = exercises.reduce((sum, e) => sum + e.sets.length, 0);
 
   return (
-    <KeyboardAvoidingView style={[styles.container, { backgroundColor: colors.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <Animated.View style={[{ flex: 1, transform: [{ translateX: swipeTranslateX }] }]} {...swipeBackPanResponder.panHandlers}>
+      <KeyboardAvoidingView style={[styles.container, { backgroundColor: colors.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.cardBorder }]}>
         <TouchableOpacity
@@ -162,13 +251,18 @@ export default function TemplateDetailView({ template, onBack, onSaved }: Templa
       </View>
 
       <ScrollView
+        ref={scrollViewRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        scrollEnabled={!draggingId}
       >
         {/* Section label */}
         <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>Exercises</Text>
+        <Text style={[styles.dragHint, { color: colors.textMuted }]}>
+          Long-press a card to drag and reorder
+        </Text>
 
         {exercises.length === 0 && (
           <View style={styles.emptyState}>
@@ -185,137 +279,139 @@ export default function TemplateDetailView({ template, onBack, onSaved }: Templa
         <View style={styles.exercisesList}>
           {exercises.map((exercise, index) => {
             const isExpanded = expandedId === exercise.id;
+            const isDragging = draggingId === exercise.id;
+            const panResponder = createPanResponder(exercise.id);
+
             return (
-              <View
-                key={exercise.id}
-                style={[
-                  styles.exerciseCard,
-                  {
-                    backgroundColor: colors.cardBg,
-                    borderColor: isExpanded ? colors.primary + '60' : colors.cardBorder,
-                  },
-                ]}
-              >
-                {/* Header */}
-                <View style={styles.exerciseHeader}>
-                  <View style={[styles.numberBadge, { backgroundColor: colors.primaryGlow }]}>
-                    <Text style={[styles.numberText, { color: colors.primary }]}>{index + 1}</Text>
-                  </View>
-                  <View style={styles.exerciseInfo}>
-                    <Text style={[styles.exerciseName, { color: colors.text }]}>{exercise.name}</Text>
-                    {exercise.sets.length > 0 && (
-                      <Text style={[styles.setSummary, { color: colors.textMuted }]}>
-                        {exercise.sets.length} {exercise.sets.length === 1 ? 'set' : 'sets'}
-                        {getAvgWeight(exercise.sets) ? ` · avg ${getAvgWeight(exercise.sets)}` : ''}
-                      </Text>
-                    )}
-                  </View>
-
-                  {/* Reorder buttons */}
-                  <View style={styles.reorderButtons}>
-                    <TouchableOpacity
-                      style={[styles.reorderBtn, { opacity: index === 0 ? 0.3 : 1 }]}
-                      onPress={() => handleReorderExercise(exercise.id, 'up')}
-                      disabled={index === 0}
-                    >
-                      <Ionicons name="chevron-up" size={16} color={colors.textMuted} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.reorderBtn, { opacity: index === exercises.length - 1 ? 0.3 : 1 }]}
-                      onPress={() => handleReorderExercise(exercise.id, 'down')}
-                      disabled={index === exercises.length - 1}
-                    >
-                      <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Expand chevron */}
+              <View key={exercise.id} style={{ zIndex: isDragging ? 1000 : 1 }}>
+                <Animated.View
+                  style={isDragging ? { transform: [{ translateY: panY }] } : undefined}
+                  {...(isDragging ? panResponder.panHandlers : {})}
+                >
                   <TouchableOpacity
-                    style={[styles.expandButton, { backgroundColor: colors.gray }]}
-                    onPress={() => handleToggleExpand(exercise.id)}
+                    style={[
+                      styles.exerciseCard,
+                      {
+                        backgroundColor: colors.cardBg,
+                        borderColor: isExpanded ? colors.primary + '60' : colors.cardBorder,
+                        opacity: isDragging ? 0.4 : 1,
+                      },
+                    ]}
+                    activeOpacity={0.7}
+                    delayLongPress={1000}
+                    onLongPress={(e) => {
+                      const { pageY } = e.nativeEvent;
+                      handleDragStart(exercise.id, pageY);
+                    }}
                   >
-                    <Ionicons
-                      name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                      size={16}
-                      color={colors.textMuted}
-                    />
-                  </TouchableOpacity>
-                </View>
-
-                {/* Expanded editing area */}
-                {isExpanded && (
-                  <View style={styles.editArea}>
-                    {/* Name input */}
-                    <TextInput
-                      style={[styles.nameInput, { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder, color: colors.text }]}
-                      placeholder="Exercise name"
-                      placeholderTextColor={colors.textMuted}
-                      value={exercise.name}
-                      onChangeText={(text) => updateExerciseName(exercise.id, text)}
-                    />
-
-                    {/* Sets header */}
-                    {exercise.sets.length > 0 && (
-                      <View style={styles.setsHeader}>
-                        <Text style={[styles.setsLabel, { color: colors.textMuted }]}>Sets</Text>
-                        <View style={styles.setBadgePlaceholder} />
-                        <View style={styles.setsCols}>
-                          <Text style={[styles.setsColLabel, { color: colors.textMuted }]}>Reps</Text>
-                          <Text style={[styles.setsColLabel, { color: colors.textMuted }]}>Weight</Text>
-                          <View style={{ width: 28 }} />
-                        </View>
+                    {/* Header */}
+                    <View style={styles.exerciseHeader}>
+                      <View style={[styles.numberBadge, { backgroundColor: colors.primaryGlow }]}>
+                        <Text style={[styles.numberText, { color: colors.primary }]}>{index + 1}</Text>
                       </View>
-                    )}
+                      <View style={styles.exerciseInfo}>
+                        <Text style={[styles.exerciseName, { color: colors.text }]}>{exercise.name}</Text>
+                        {exercise.sets.length > 0 && (
+                          <Text style={[styles.setSummary, { color: colors.textMuted }]}>
+                            {exercise.sets.length} {exercise.sets.length === 1 ? 'set' : 'sets'}
+                            {getAvgWeight(exercise.sets) ? ` · avg ${getAvgWeight(exercise.sets)}` : ''}
+                          </Text>
+                        )}
+                      </View>
 
-                    {/* Set rows */}
-                    {exercise.sets.map((set, setIdx) => (
-                      <View key={set.id} style={styles.setRow}>
-                        <View style={[styles.setBadge, { backgroundColor: colors.gray }]}>
-                          <Text style={[styles.setBadgeText, { color: colors.textMuted }]}>{setIdx + 1}</Text>
-                        </View>
-                        <TextInput
-                          style={[styles.setInput, { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder, color: colors.text }]}
-                          placeholder="10"
-                          placeholderTextColor={colors.textMuted}
-                          keyboardType="number-pad"
-                          value={set.reps}
-                          onChangeText={(text) => updateSet(exercise.id, set.id, 'reps', text)}
+                      {/* Expand chevron */}
+                      <TouchableOpacity
+                        style={[styles.expandButton, { backgroundColor: colors.gray }]}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleToggleExpand(exercise.id);
+                        }}
+                        disabled={isDragging}
+                      >
+                        <Ionicons
+                          name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                          size={16}
+                          color={colors.textMuted}
                         />
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Expanded editing area */}
+                    {isExpanded && (
+                      <View style={styles.editArea}>
+                        {/* Name input */}
                         <TextInput
-                          style={[styles.setInput, { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder, color: colors.text }]}
-                          placeholder="60kg"
+                          style={[styles.nameInput, { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder, color: colors.text }]}
+                          placeholder="Exercise name"
                           placeholderTextColor={colors.textMuted}
-                          value={set.weight}
-                          onChangeText={(text) => updateSet(exercise.id, set.id, 'weight', text)}
+                          value={exercise.name}
+                          onChangeText={(text) => updateExerciseName(exercise.id, text)}
                         />
+
+                        {/* Sets header */}
+                        {exercise.sets.length > 0 && (
+                          <View style={styles.setsHeader}>
+                            <Text style={[styles.setsLabel, { color: colors.textMuted }]}>Sets</Text>
+                            <View style={styles.setBadgePlaceholder} />
+                            <View style={styles.setsCols}>
+                              <Text style={[styles.setsColLabel, { color: colors.textMuted }]}>Reps</Text>
+                              <Text style={[styles.setsColLabel, { color: colors.textMuted }]}>Weight</Text>
+                              <View style={{ width: 28 }} />
+                            </View>
+                          </View>
+                        )}
+
+                        {/* Set rows */}
+                        {exercise.sets.map((set, setIdx) => (
+                          <View key={set.id} style={styles.setRow}>
+                            <View style={[styles.setBadge, { backgroundColor: colors.gray }]}>
+                              <Text style={[styles.setBadgeText, { color: colors.textMuted }]}>{setIdx + 1}</Text>
+                            </View>
+                            <TextInput
+                              style={[styles.setInput, { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder, color: colors.text }]}
+                              placeholder="10"
+                              placeholderTextColor={colors.textMuted}
+                              keyboardType="number-pad"
+                              value={set.reps}
+                              onChangeText={(text) => updateSet(exercise.id, set.id, 'reps', text)}
+                            />
+                            <TextInput
+                              style={[styles.setInput, { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder, color: colors.text }]}
+                              placeholder="60kg"
+                              placeholderTextColor={colors.textMuted}
+                              value={set.weight}
+                              onChangeText={(text) => updateSet(exercise.id, set.id, 'weight', text)}
+                            />
+                            <TouchableOpacity
+                              style={[styles.removeSetBtn, { backgroundColor: colors.dangerBg }]}
+                              onPress={() => removeSet(exercise.id, set.id)}
+                            >
+                              <Ionicons name="close" size={14} color={colors.danger} />
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+
+                        {/* Add Set */}
                         <TouchableOpacity
-                          style={[styles.removeSetBtn, { backgroundColor: colors.dangerBg }]}
-                          onPress={() => removeSet(exercise.id, set.id)}
+                          style={[styles.addSetBtn, { borderColor: colors.primary + '40' }]}
+                          onPress={() => addSet(exercise.id)}
                         >
-                          <Ionicons name="close" size={14} color={colors.danger} />
+                          <Ionicons name="add-circle-outline" size={16} color={colors.primary} />
+                          <Text style={[styles.addSetText, { color: colors.primary }]}>Add Set</Text>
+                        </TouchableOpacity>
+
+                        {/* Remove Exercise */}
+                        <TouchableOpacity
+                          style={styles.removeExerciseBtn}
+                          onPress={() => handleRemoveExercise(exercise.id)}
+                        >
+                          <Ionicons name="trash-outline" size={14} color={colors.danger} />
+                          <Text style={[styles.removeExerciseText, { color: colors.danger }]}>Remove Exercise</Text>
                         </TouchableOpacity>
                       </View>
-                    ))}
-
-                    {/* Add Set */}
-                    <TouchableOpacity
-                      style={[styles.addSetBtn, { borderColor: colors.primary + '40' }]}
-                      onPress={() => addSet(exercise.id)}
-                    >
-                      <Ionicons name="add-circle-outline" size={16} color={colors.primary} />
-                      <Text style={[styles.addSetText, { color: colors.primary }]}>Add Set</Text>
-                    </TouchableOpacity>
-
-                    {/* Remove Exercise */}
-                    <TouchableOpacity
-                      style={styles.removeExerciseBtn}
-                      onPress={() => handleRemoveExercise(exercise.id)}
-                    >
-                      <Ionicons name="trash-outline" size={14} color={colors.danger} />
-                      <Text style={[styles.removeExerciseText, { color: colors.danger }]}>Remove Exercise</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
+                    )}
+                  </TouchableOpacity>
+                </Animated.View>
               </View>
             );
           })}
@@ -381,6 +477,7 @@ export default function TemplateDetailView({ template, onBack, onSaved }: Templa
         </SafeAreaView>
       </Modal>
     </KeyboardAvoidingView>
+    </Animated.View>
   );
 }
 
@@ -401,19 +498,26 @@ const styles = StyleSheet.create({
   scrollView: { flex: 1 },
   scrollContent: { padding: 20, gap: 12 },
   sectionLabel: sectionHeadingTextStyle,
+  dragHint: {
+    fontSize: 12,
+    marginTop: 2,
+    marginBottom: 8,
+  },
   emptyState: { alignItems: 'center', paddingVertical: 48, gap: 12 },
   emptyIconContainer: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
   emptyText: { fontSize: 14, textAlign: 'center' },
   exercisesList: { gap: 12 },
   exerciseCard: { borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
-  exerciseHeader: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 10 },
+  exerciseHeader: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 8 },
+  dragHandle: {
+    padding: 4,
+    cursor: 'grab',
+  },
   numberBadge: { width: 26, height: 26, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
   numberText: { fontSize: 12, fontWeight: '800' },
   exerciseInfo: { flex: 1 },
   exerciseName: { fontSize: 16, fontWeight: '700' },
   setSummary: { fontSize: 12, marginTop: 2 },
-  reorderButtons: { flexDirection: 'row', gap: 2 },
-  reorderBtn: { padding: 2 },
   expandButton: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   editArea: { paddingHorizontal: 14, paddingBottom: 14, gap: 10 },
   nameInput: { borderRadius: 10, borderWidth: 1, padding: 12, fontSize: 15 },

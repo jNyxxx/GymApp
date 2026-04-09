@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -12,16 +12,10 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import { useColors } from '../../context/ThemeContext';
 import { WorkoutSplit, SPLIT_LABELS } from '../../models/WorkoutSplit';
 import { ExercisePerformanceLog } from '../../models/ExerciseLog';
-import { WorkoutTemplate } from '../../models/WorkoutTemplate';
-import { WorkoutTemplateService } from '../../services/WorkoutTemplateService';
-import { useGymStore } from '../../context/GymStore';
-import { getLatestRepeatableEntry } from './workoutLoggerUtils';
 import SplitIcon from '../shared/SplitIcon';
-import WorkoutLoggerSheet from './WorkoutLoggerSheet';
 
 interface SplitPickerSheetProps {
   visible: boolean;
@@ -49,221 +43,126 @@ export default function SplitPickerSheet({
   currentNotes,
 }: SplitPickerSheetProps) {
   const colors = useColors();
-  const entries = useGymStore((state) => state.entries);
   const [selectedSplit, setSelectedSplit] = useState<string | null>(currentSplit || null);
   const [notes, setNotes] = useState(currentNotes || '');
-  const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
-  const [showWorkoutLogger, setShowWorkoutLogger] = useState(false);
-  const [loggerInitialExerciseLogs, setLoggerInitialExerciseLogs] = useState<ExercisePerformanceLog[] | undefined>(undefined);
-  const [loggerAutoFillLastValues, setLoggerAutoFillLastValues] = useState(true);
-  const [loggerTitleOverride, setLoggerTitleOverride] = useState<string | undefined>(undefined);
-
-  const selectedTemplate = useMemo(
-    () => templates.find((t) => t.id === selectedSplit) || null,
-    [templates, selectedSplit]
-  );
-  const latestRepeatableEntry = useMemo(() => getLatestRepeatableEntry(entries), [entries]);
-
-  const resolveSplitLabel = (split?: string) => {
-    if (!split) return 'Workout';
-    if (split in SPLIT_LABELS) return SPLIT_LABELS[split as WorkoutSplit];
-    const template = templates.find((item) => item.id === split);
-    return template?.name || split;
-  };
-
-  const repeatSessionMeta = useMemo(() => {
-    if (!latestRepeatableEntry?.exerciseLogs?.length) return '';
-    const exerciseCount = latestRepeatableEntry.exerciseLogs.length;
-    const totalSets = latestRepeatableEntry.exerciseLogs.reduce((sum, exercise) => sum + exercise.sets.length, 0);
-    const splitLabel = resolveSplitLabel(String(latestRepeatableEntry.split));
-    return `${splitLabel} · ${exerciseCount} exercises · ${totalSets} sets`;
-  }, [latestRepeatableEntry, templates]);
-
-  const loadTemplates = async () => {
-    await WorkoutTemplateService.migrateFromCustomSplits();
-    const loaded = await WorkoutTemplateService.getAll();
-    setTemplates(loaded);
-  };
+  const [showCustomSplitInput, setShowCustomSplitInput] = useState(false);
+  const [customSplitName, setCustomSplitName] = useState('');
 
   useEffect(() => {
     if (!visible) return;
     setSelectedSplit(currentSplit || null);
     setNotes(currentNotes || '');
-    setShowWorkoutLogger(false);
-    setLoggerInitialExerciseLogs(undefined);
-    setLoggerAutoFillLastValues(true);
-    setLoggerTitleOverride(undefined);
-    loadTemplates();
+    setShowCustomSplitInput(false);
+    setCustomSplitName('');
   }, [visible, currentSplit, currentNotes]);
 
   const resetAndClose = () => {
     setSelectedSplit(null);
     setNotes('');
-    setShowWorkoutLogger(false);
-    setLoggerInitialExerciseLogs(undefined);
-    setLoggerAutoFillLastValues(true);
-    setLoggerTitleOverride(undefined);
+    setShowCustomSplitInput(false);
+    setCustomSplitName('');
     onClose();
   };
 
   const selectSplit = (split: string) => {
     setSelectedSplit(split);
-    setLoggerInitialExerciseLogs(undefined);
-    setLoggerAutoFillLastValues(true);
-    setLoggerTitleOverride(undefined);
+    setShowCustomSplitInput(false);
+    setCustomSplitName('');
   };
 
   const handleConfirm = () => {
     if (!selectedSplit) return;
 
-    if (selectedTemplate && selectedTemplate.exercises.length > 0) {
-      setLoggerInitialExerciseLogs(undefined);
-      setLoggerAutoFillLastValues(true);
-      setLoggerTitleOverride(undefined);
-      setShowWorkoutLogger(true);
-      return;
+    // If custom split, use the custom split name
+    const finalSplit = selectedSplit === 'custom' ? `custom_${customSplitName.trim().toLowerCase().replace(/\s+/g, '_')}` : selectedSplit;
+
+    if (selectedSplit === 'custom' && !customSplitName.trim()) {
+      return; // Don't confirm if custom split name is empty
     }
 
-    onSelect(selectedSplit, notes.trim() || undefined);
+    onSelect(finalSplit, notes.trim() || undefined);
     resetAndClose();
   };
 
-  const handleRepeatLastSession = () => {
-    if (!latestRepeatableEntry?.split || !latestRepeatableEntry.exerciseLogs?.length) return;
-
-    const split = String(latestRepeatableEntry.split);
-    setSelectedSplit(split);
-    setNotes(latestRepeatableEntry.notes || '');
-    setLoggerInitialExerciseLogs(latestRepeatableEntry.exerciseLogs);
-    setLoggerAutoFillLastValues(false);
-    setLoggerTitleOverride(`Repeat · ${resolveSplitLabel(split)}`);
-    setShowWorkoutLogger(true);
-  };
-
-  const handleWorkoutSave = (exerciseLogs: ExercisePerformanceLog[], workoutNotes?: string) => {
-    if (!selectedSplit) return;
-    const resolvedNotes = workoutNotes ?? (notes.trim() || undefined);
-    onSelect(selectedSplit, resolvedNotes, exerciseLogs);
-    resetAndClose();
-  };
-
-  const handleManageTemplates = () => {
-    resetAndClose();
-    router.push('/(tabs)/templates');
+  const handleCustomSplitPress = () => {
+    setSelectedSplit('custom');
+    setShowCustomSplitInput(true);
   };
 
   return (
-    <>
-      <Modal visible={visible && !showWorkoutLogger} transparent animationType="slide" onRequestClose={resetAndClose}>
-        <SafeAreaView style={[styles.overlay, { backgroundColor: colors.overlay }]}>
-          <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={resetAndClose} />
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={resetAndClose}>
+      <SafeAreaView style={[styles.overlay, { backgroundColor: colors.overlay }]}>
+        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={resetAndClose} />
 
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardAvoid}>
-            <View style={[styles.sheet, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
-              <View style={[styles.handle, { backgroundColor: colors.grayLight }]} />
-              <Text style={[styles.title, { color: colors.text }]}>Pick Your Split</Text>
-              {latestRepeatableEntry?.exerciseLogs?.length ? (
-                <TouchableOpacity
-                  style={[styles.repeatButton, { backgroundColor: colors.primaryGlow, borderColor: colors.primaryBorder }]}
-                  onPress={handleRepeatLastSession}
-                  accessibilityRole="button"
-                  accessibilityLabel="Repeat last session"
-                  accessibilityHint="Starts today's workout with your previous session structure and numbers"
-                >
-                  <View style={styles.repeatContent}>
-                    <View style={[styles.repeatIconWrap, { backgroundColor: colors.cardBg }]}>
-                      <Ionicons name="repeat" size={16} color={colors.primary} />
-                    </View>
-                    <View style={styles.repeatTextWrap}>
-                      <Text style={[styles.repeatTitle, { color: colors.primary }]}>Repeat last session</Text>
-                      <Text style={[styles.repeatMeta, { color: colors.textSecondary }]} numberOfLines={1}>
-                        {repeatSessionMeta}
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardAvoid}>
+          <View style={[styles.sheet, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
+            <View style={[styles.handle, { backgroundColor: colors.grayLight }]} />
+            <Text style={[styles.title, { color: colors.text }]}>Pick Your Split</Text>
+
+            <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+              <View style={styles.options}>
+                {BUILT_IN_SPLITS.map((split) => {
+                  const isSelected = split === selectedSplit;
+                  return (
+                    <TouchableOpacity
+                      key={split}
+                      style={[
+                        styles.option,
+                        { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder },
+                        isSelected && [styles.selectedOption, { borderColor: colors.primary, backgroundColor: colors.primaryGlow }],
+                      ]}
+                      onPress={() => selectSplit(split)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isSelected }}
+                      accessibilityLabel={`${SPLIT_LABELS[split]} split`}
+                    >
+                      <SplitIcon split={split} size="sm" style={isSelected ? { borderColor: colors.primary + '60' } : undefined} />
+                      <Text style={[styles.optionLabel, { color: colors.text }, isSelected && { color: colors.primary }]}>
+                        {SPLIT_LABELS[split]}
                       </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+                      {isSelected && <Ionicons name="checkmark-circle" size={20} color={colors.primary} />}
+                    </TouchableOpacity>
+                  );
+                })}
+
+                {/* Custom Split Option */}
+                <TouchableOpacity
+                  style={[
+                    styles.option,
+                    { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder },
+                    selectedSplit === 'custom' && [styles.selectedOption, { borderColor: colors.primary, backgroundColor: colors.primaryGlow }],
+                  ]}
+                  onPress={handleCustomSplitPress}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: selectedSplit === 'custom' }}
+                  accessibilityLabel="Custom split"
+                >
+                  <View style={[styles.customIconCircle, { backgroundColor: colors.primaryGlow }]}>
+                    <Ionicons name="create-outline" size={18} color={colors.primary} />
                   </View>
+                  <Text style={[styles.optionLabel, { color: colors.text }, selectedSplit === 'custom' && { color: colors.primary }]}>
+                    Custom Split
+                  </Text>
+                  {selectedSplit === 'custom' && <Ionicons name="checkmark-circle" size={20} color={colors.primary} />}
                 </TouchableOpacity>
-              ) : null}
+              </View>
 
-              <ScrollView style={styles.optionsScroll} showsVerticalScrollIndicator={false}>
-                <View style={styles.options}>
-                  {BUILT_IN_SPLITS.map((split) => {
-                    const isSelected = split === selectedSplit;
-                    return (
-                      <TouchableOpacity
-                        key={split}
-                        style={[
-                          styles.option,
-                          { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder },
-                          isSelected && [styles.selectedOption, { borderColor: colors.primary, backgroundColor: colors.primaryGlow }],
-                        ]}
-                        onPress={() => selectSplit(split)}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected: isSelected }}
-                        accessibilityLabel={`${SPLIT_LABELS[split]} split`}
-                      >
-                        <SplitIcon split={split} size="sm" style={isSelected ? { borderColor: colors.primary + '60' } : undefined} />
-                        <Text style={[styles.optionLabel, { color: colors.text }, isSelected && { color: colors.primary }]}>
-                          {SPLIT_LABELS[split]}
-                        </Text>
-                        {isSelected && <Ionicons name="checkmark-circle" size={20} color={colors.primary} />}
-                      </TouchableOpacity>
-                    );
-                  })}
-
-                  {templates.length > 0 && (
-                    <>
-                      <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>Templates</Text>
-                      {templates.map((template) => {
-                        const isSelected = template.id === selectedSplit;
-                        const totalSets = template.exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
-                        return (
-                          <TouchableOpacity
-                            key={template.id}
-                            style={[
-                              styles.option,
-                              { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder },
-                              isSelected && [styles.selectedOption, { borderColor: colors.primary, backgroundColor: colors.primaryGlow }],
-                            ]}
-                            onPress={() => selectSplit(template.id)}
-                            accessibilityRole="button"
-                            accessibilityState={{ selected: isSelected }}
-                            accessibilityLabel={`${template.name} template`}
-                          >
-                            <View style={[styles.templateIconCircle, { backgroundColor: colors.primaryGlow }]}>
-                              <Text style={styles.templateEmoji}>{template.emoji || '🏋️'}</Text>
-                            </View>
-                            <View style={styles.templateInfo}>
-                              <Text style={[styles.optionLabel, { color: colors.text }, isSelected && { color: colors.primary }]}>
-                                {template.name}
-                              </Text>
-                              <Text style={[styles.templateMeta, { color: colors.textSecondary }]}>
-                                {template.exercises.length} exercises · {totalSets} sets
-                              </Text>
-                            </View>
-                            {isSelected && <Ionicons name="checkmark-circle" size={20} color={colors.primary} />}
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </>
-                  )}
-
-                  <TouchableOpacity style={[styles.manageButton, { borderColor: colors.primary }]} onPress={handleManageTemplates}>
-                    <Ionicons name="settings-outline" size={18} color={colors.primary} />
-                    <Text style={[styles.manageButtonText, { color: colors.primary }]}>Manage Templates</Text>
-                    <Ionicons name="chevron-forward" size={18} color={colors.primary} />
-                  </TouchableOpacity>
-                </View>
-              </ScrollView>
-
-              {selectedTemplate && selectedTemplate.exercises.length > 0 && (
-                <View style={[styles.exercisesPreview, { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder }]}>
-                  <Text style={[styles.exercisesTitle, { color: colors.textSecondary }]}>
-                    Includes set logging for {selectedTemplate.name}
-                  </Text>
-                  <Text style={[styles.exercisesList, { color: colors.text }]}>
-                    {selectedTemplate.exercises.map((e) => e.name || 'Unnamed').join(' • ')}
-                  </Text>
+              {/* Custom Split Input */}
+              {showCustomSplitInput && (
+                <View style={styles.customSplitSection}>
+                  <Text style={[styles.customSplitLabel, { color: colors.textSecondary }]}>Split Name</Text>
+                  <TextInput
+                    style={[
+                      styles.customSplitInput,
+                      { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder, color: colors.text },
+                    ]}
+                    placeholder="e.g. Chest & Triceps, Full Body..."
+                    placeholderTextColor={colors.textMuted}
+                    value={customSplitName}
+                    onChangeText={setCustomSplitName}
+                    maxLength={50}
+                    autoFocus
+                  />
                 </View>
               )}
 
@@ -287,28 +186,15 @@ export default function SplitPickerSheet({
                   </View>
 
                   <TouchableOpacity style={[styles.confirmButton, { backgroundColor: colors.primary }]} onPress={handleConfirm}>
-                    <Text style={styles.confirmButtonText}>
-                      {selectedTemplate && selectedTemplate.exercises.length > 0 ? 'Log Workout Details' : 'Log Workout'}
-                    </Text>
+                    <Text style={styles.confirmButtonText}>Log Workout</Text>
                   </TouchableOpacity>
                 </>
               )}
-            </View>
-          </KeyboardAvoidingView>
-        </SafeAreaView>
-      </Modal>
-
-      <WorkoutLoggerSheet
-        visible={visible && showWorkoutLogger}
-        template={selectedTemplate}
-        initialNotes={notes}
-        initialExerciseLogs={loggerInitialExerciseLogs}
-        autoFillLastValues={loggerAutoFillLastValues}
-        titleOverride={loggerTitleOverride}
-        onClose={() => setShowWorkoutLogger(false)}
-        onSave={handleWorkoutSave}
-      />
-    </>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </Modal>
   );
 }
 
@@ -320,8 +206,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 12,
-    paddingHorizontal: 24,
-    paddingBottom: 24,
     borderWidth: 1,
     borderBottomWidth: 0,
     maxHeight: '88%',
@@ -338,40 +222,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textAlign: 'center',
     marginBottom: 16,
+    paddingHorizontal: 24,
   },
-  repeatButton: {
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    marginBottom: 12,
-  },
-  repeatContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  repeatIconWrap: {
-    width: 30,
-    height: 30,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  repeatTextWrap: {
-    flex: 1,
-    gap: 2,
-  },
-  repeatTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  repeatMeta: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  optionsScroll: {
-    maxHeight: 320,
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
   },
   options: {
     gap: 10,
@@ -388,44 +243,29 @@ const styles = StyleSheet.create({
   },
   selectedOption: { borderWidth: 1 },
   optionLabel: { flex: 1, fontSize: 16, fontWeight: '700' },
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  templateIconCircle: {
+  customIconCircle: {
     width: 32,
     height: 32,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  templateEmoji: { fontSize: 16 },
-  templateInfo: { flex: 1, gap: 2 },
-  templateMeta: { fontSize: 12 },
-  manageButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 14,
-    paddingVertical: 14,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    marginTop: 4,
+  customSplitSection: {
+    marginTop: 12,
     gap: 8,
   },
-  manageButtonText: { fontSize: 15, fontWeight: '700' },
-  exercisesPreview: {
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 12,
-    borderWidth: 1,
+  customSplitLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  exercisesTitle: { fontSize: 12, fontWeight: '600', marginBottom: 4 },
-  exercisesList: { fontSize: 13, lineHeight: 18 },
+  customSplitInput: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 14,
+    fontSize: 15,
+  },
   notesSection: { marginTop: 16, gap: 8 },
   notesLabel: { fontSize: 14, fontWeight: '600' },
   notesInput: {

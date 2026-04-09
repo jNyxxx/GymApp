@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, View, Text, StyleSheet, SafeAreaView, TouchableOpacity, TextInput } from 'react-native';
+import { Modal, View, Text, StyleSheet, SafeAreaView, TouchableOpacity, TextInput, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '../../context/ThemeContext';
 import { GymEntry } from '../../models/GymEntry';
@@ -141,80 +141,82 @@ export default function DayDetailSheet({
             <Text style={[styles.sheetTitle, { color: colors.text }]}>Change Session</Text>
             <Text style={[styles.label, { color: colors.textMuted }]}>Choose a split</Text>
 
-            <View style={styles.editOptions}>
-              {Object.values(WorkoutSplit).map((split) => (
-                <TouchableOpacity
-                  key={split}
-                  style={[
-                    styles.splitOption,
-                    { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder },
-                    entry?.split === split && [styles.splitOptionSelected, { borderColor: colors.primary, backgroundColor: colors.primaryGlow }],
-                  ]}
-                  onPress={() => handleSetWent(split)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${SPLIT_LABELS[split]} split`}
-                  accessibilityHint="Update this day to the selected split"
-                  accessibilityState={{ selected: entry?.split === split }}
-                >
-                  <SplitIcon
-                    split={split}
-                    size="sm"
-                    style={entry?.split === split ? { borderColor: colors.primary + '60' } : undefined}
-                  />
-                  <Text style={[
-                    styles.splitOptionText,
-                    { color: colors.text },
-                    entry?.split === split && { color: colors.primary },
-                  ]}>
-                    {SPLIT_LABELS[split]}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-
-              {templates.length > 0 && (
-                <Text style={[styles.templatesLabel, { color: colors.textMuted }]}>Templates</Text>
-              )}
-              {templates.map((template) => (
-                <TouchableOpacity
-                  key={template.id}
-                  style={[
-                    styles.splitOption,
-                    { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder },
-                    entry?.split === template.id && [styles.splitOptionSelected, { borderColor: colors.primary, backgroundColor: colors.primaryGlow }],
-                  ]}
-                  onPress={() => handleSetWent(template.id)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${template.name} template`}
-                  accessibilityHint="Update this day to this template"
-                  accessibilityState={{ selected: entry?.split === template.id }}
-                >
-                  <SplitIcon
-                    split={template.id}
-                    size="sm"
-                    style={entry?.split === template.id ? { borderColor: colors.primary + '60' } : undefined}
-                  />
-                  <Text
+            <ScrollView style={styles.editScroll} showsVerticalScrollIndicator={false}>
+              <View style={styles.editOptions}>
+                {Object.values(WorkoutSplit).map((split) => (
+                  <TouchableOpacity
+                    key={split}
                     style={[
+                      styles.splitOption,
+                      { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder },
+                      entry?.split === split && [styles.splitOptionSelected, { borderColor: colors.primary, backgroundColor: colors.primaryGlow }],
+                    ]}
+                    onPress={() => handleSetWent(split)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${SPLIT_LABELS[split]} split`}
+                    accessibilityHint="Update this day to the selected split"
+                    accessibilityState={{ selected: entry?.split === split }}
+                  >
+                    <SplitIcon
+                      split={split}
+                      size="sm"
+                      style={entry?.split === split ? { borderColor: colors.primary + '60' } : undefined}
+                    />
+                    <Text style={[
                       styles.splitOptionText,
                       { color: colors.text },
-                      entry?.split === template.id && { color: colors.primary },
-                    ]}
-                  >
-                    {template.emoji ? `${template.emoji} ${template.name}` : template.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                      entry?.split === split && { color: colors.primary },
+                    ]}>
+                      {SPLIT_LABELS[split]}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
 
-              <TouchableOpacity
-                style={[styles.noGymOption, { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder }]}
-                onPress={handleSetNoGym}
-                accessibilityRole="button"
-                accessibilityLabel="Mark as no gym"
-                accessibilityHint="Sets this day to no gym"
-              >
-                <Text style={[styles.noGymText, { color: colors.textSecondary }]}>✕  No Gym</Text>
-              </TouchableOpacity>
-            </View>
+                {templates.length > 0 && (
+                  <Text style={[styles.templatesLabel, { color: colors.textMuted }]}>Templates</Text>
+                )}
+                {templates.map((template) => (
+                  <TouchableOpacity
+                    key={template.id}
+                    style={[
+                      styles.splitOption,
+                      { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder },
+                      entry?.split === template.id && [styles.splitOptionSelected, { borderColor: colors.primary, backgroundColor: colors.primaryGlow }],
+                    ]}
+                    onPress={() => handleSetWent(template.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${template.name} template`}
+                    accessibilityHint="Update this day to this template"
+                    accessibilityState={{ selected: entry?.split === template.id }}
+                  >
+                    <SplitIcon
+                      split={template.id}
+                      size="sm"
+                      style={entry?.split === template.id ? { borderColor: colors.primary + '60' } : undefined}
+                    />
+                    <Text
+                      style={[
+                        styles.splitOptionText,
+                        { color: colors.text },
+                        entry?.split === template.id && { color: colors.primary },
+                      ]}
+                    >
+                      {template.emoji ? `${template.emoji} ${template.name}` : template.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+
+                <TouchableOpacity
+                  style={[styles.noGymOption, { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder }]}
+                  onPress={handleSetNoGym}
+                  accessibilityRole="button"
+                  accessibilityLabel="Mark as no gym"
+                  accessibilityHint="Sets this day to no gym"
+                >
+                  <Text style={[styles.noGymText, { color: colors.textSecondary }]}>✕  No Gym</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
 
             <PrimaryButton
               title="Cancel"
@@ -244,156 +246,162 @@ export default function DayDetailSheet({
         >
           <View style={[styles.handle, { backgroundColor: colors.grayLight }]} />
           <Text style={[styles.sheetTitle, { color: colors.text }]}>Day Details</Text>
-          <Text style={[styles.label, { color: colors.textMuted }]}>Selected day</Text>
-          <Text style={[styles.date, { color: colors.text }]}>{friendlyDate}</Text>
+
+          <ScrollView style={styles.detailScroll} showsVerticalScrollIndicator={false}>
+            <Text style={[styles.label, { color: colors.textMuted }]}>Selected day</Text>
+            <Text style={[styles.date, { color: colors.text }]}>{friendlyDate}</Text>
+
+            {entry ? (
+              <>
+                <View style={styles.statusRow}>
+                  <Text style={[styles.statusText, { color: colors.text }]}>
+                    {entry.status === GymStatus.WENT ? 'Went to gym' : 'No gym'}
+                  </Text>
+                  {loggedTime && (
+                    <Text style={[styles.timeText, { color: colors.textSecondary }]}>· {loggedTime}</Text>
+                  )}
+                  {entry.split && (
+                    <View style={{ marginLeft: 'auto' }}>
+                      <SplitIcon split={entry.split} size="sm" />
+                    </View>
+                  )}
+                </View>
+
+                {entry.split && (
+                  <View style={[styles.sessionInfo, { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder }]}>
+                    <Text style={[styles.sessionLabel, { color: colors.textSecondary }]}>
+                      Logged split
+                    </Text>
+                    <Text style={[styles.sessionSplit, { color: colors.text }]}>{splitLabel}</Text>
+                    <Text style={[styles.sessionHint, { color: colors.textMuted }]}>
+                      Saved from your split selection when this session was logged.
+                    </Text>
+                  </View>
+                )}
+
+                {/* Notes Section */}
+                {entry.status === GymStatus.WENT && (
+                  <View style={[styles.notesSection, { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder }]}>
+                    <View style={styles.notesHeader}>
+                      <Text style={[styles.notesLabel, { color: colors.textSecondary }]}>Notes</Text>
+                      <TouchableOpacity
+                        onPress={handleStartEditNotes}
+                        accessibilityRole="button"
+                        accessibilityLabel={entry.notes ? "Edit notes" : "Add notes"}
+                        accessibilityHint="Opens note editor for this day"
+                      >
+                        <Text style={[styles.editNotesButton, { color: colors.primary }]}>
+                          {entry.notes ? 'Edit' : 'Add'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                    {editingNotes ? (
+                      <View style={styles.notesEditContainer}>
+                        <TextInput
+                          style={[
+                            styles.notesInput,
+                            {
+                              backgroundColor: colors.bg,
+                              borderColor: colors.cardBorder,
+                              color: colors.text,
+                            },
+                          ]}
+                          placeholder="What exercises did you do? How did it feel?"
+                          placeholderTextColor={colors.textMuted}
+                          value={notes}
+                          onChangeText={setNotes}
+                          multiline
+                          maxLength={500}
+                          textAlignVertical="top"
+                          autoFocus
+                        />
+                        <SheetActions style={styles.notesEditActions}>
+                          <TouchableOpacity
+                            style={[styles.notesCancelBtn, { backgroundColor: colors.gray }]}
+                            onPress={() => setEditingNotes(false)}
+                            accessibilityRole="button"
+                            accessibilityLabel="Cancel notes editing"
+                          >
+                            <Text style={[styles.notesCancelText, { color: colors.textSecondary }]}>Cancel</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.notesSaveBtn, { backgroundColor: colors.primary }]}
+                            onPress={handleSaveNotes}
+                            accessibilityRole="button"
+                            accessibilityLabel="Save notes"
+                            accessibilityHint="Updates notes for this day"
+                          >
+                            <Text style={styles.notesSaveText}>Save</Text>
+                          </TouchableOpacity>
+                        </SheetActions>
+                      </View>
+                    ) : (
+                      <Text style={[styles.notesText, { color: entry.notes ? colors.text : colors.textMuted }]}>
+                        {entry.notes || 'No notes added'}
+                      </Text>
+                    )}
+                  </View>
+                )}
+
+                {entry.status === GymStatus.WENT && entry.exerciseLogs && entry.exerciseLogs.length > 0 && (
+                  <View style={[styles.performanceSection, { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder }]}>
+                    <Text style={[styles.performanceTitle, { color: colors.textSecondary }]}>Exercise Performance</Text>
+                    <View style={styles.performanceList}>
+                      {entry.exerciseLogs.map((exercise) => (
+                        <View key={exercise.exerciseId} style={styles.performanceExercise}>
+                          <Text style={[styles.performanceExerciseName, { color: colors.text }]}>
+                            {exercise.exerciseName}
+                          </Text>
+                          <View style={styles.performanceSets}>
+                            {exercise.sets.map((set) => (
+                              <Text key={`${exercise.exerciseId}_${set.setNumber}`} style={[styles.performanceSetText, { color: colors.textSecondary }]}>
+                                {formatSetPerformance(set)}
+                              </Text>
+                            ))}
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </>
+            ) : (
+              <View style={styles.emptyContent}>
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No entry for this day</Text>
+                <Text style={[styles.emptyHint, { color: colors.textMuted }]}>This day is unanswered</Text>
+              </View>
+            )}
+          </ScrollView>
 
           {entry ? (
-            <>
-              <View style={styles.statusRow}>
-                <Text style={[styles.statusText, { color: colors.text }]}>
-                  {entry.status === GymStatus.WENT ? 'Went to gym' : 'No gym'}
-                </Text>
-                {loggedTime && (
-                  <Text style={[styles.timeText, { color: colors.textSecondary }]}>· {loggedTime}</Text>
-                )}
-                {entry.split && (
-                  <View style={{ marginLeft: 'auto' }}>
-                    <SplitIcon split={entry.split} size="sm" />
-                  </View>
-                )}
-              </View>
-
-              {entry.split && (
-                <View style={[styles.sessionInfo, { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder }]}>
-                  <Text style={[styles.sessionLabel, { color: colors.textSecondary }]}>
-                    Logged split
-                  </Text>
-                  <Text style={[styles.sessionSplit, { color: colors.text }]}>{splitLabel}</Text>
-                  <Text style={[styles.sessionHint, { color: colors.textMuted }]}>
-                    Saved from your split selection when this session was logged.
-                  </Text>
-                </View>
-              )}
-
-              {/* Notes Section */}
-              {entry.status === GymStatus.WENT && (
-                <View style={[styles.notesSection, { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder }]}>
-                  <View style={styles.notesHeader}>
-                    <Text style={[styles.notesLabel, { color: colors.textSecondary }]}>Notes</Text>
-                    <TouchableOpacity
-                      onPress={handleStartEditNotes}
-                      accessibilityRole="button"
-                      accessibilityLabel={entry.notes ? "Edit notes" : "Add notes"}
-                      accessibilityHint="Opens note editor for this day"
-                    >
-                      <Text style={[styles.editNotesButton, { color: colors.primary }]}>
-                        {entry.notes ? 'Edit' : 'Add'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                  {editingNotes ? (
-                    <View style={styles.notesEditContainer}>
-                      <TextInput
-                        style={[
-                          styles.notesInput,
-                          { 
-                            backgroundColor: colors.bg, 
-                            borderColor: colors.cardBorder,
-                            color: colors.text,
-                          },
-                        ]}
-                        placeholder="What exercises did you do? How did it feel?"
-                        placeholderTextColor={colors.textMuted}
-                        value={notes}
-                        onChangeText={setNotes}
-                        multiline
-                        maxLength={500}
-                        textAlignVertical="top"
-                        autoFocus
-                      />
-                      <SheetActions style={styles.notesEditActions}>
-                        <TouchableOpacity 
-                          style={[styles.notesCancelBtn, { backgroundColor: colors.gray }]}
-                          onPress={() => setEditingNotes(false)}
-                          accessibilityRole="button"
-                          accessibilityLabel="Cancel notes editing"
-                        >
-                          <Text style={[styles.notesCancelText, { color: colors.textSecondary }]}>Cancel</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                          style={[styles.notesSaveBtn, { backgroundColor: colors.primary }]}
-                          onPress={handleSaveNotes}
-                          accessibilityRole="button"
-                          accessibilityLabel="Save notes"
-                          accessibilityHint="Updates notes for this day"
-                        >
-                          <Text style={styles.notesSaveText}>Save</Text>
-                        </TouchableOpacity>
-                      </SheetActions>
-                    </View>
-                  ) : (
-                    <Text style={[styles.notesText, { color: entry.notes ? colors.text : colors.textMuted }]}>
-                      {entry.notes || 'No notes added'}
-                    </Text>
-                  )}
-                </View>
-              )}
-
-              {entry.status === GymStatus.WENT && entry.exerciseLogs && entry.exerciseLogs.length > 0 && (
-                <View style={[styles.performanceSection, { backgroundColor: colors.cardBgAlt, borderColor: colors.cardBorder }]}>
-                  <Text style={[styles.performanceTitle, { color: colors.textSecondary }]}>Exercise Performance</Text>
-                  <View style={styles.performanceList}>
-                    {entry.exerciseLogs.map((exercise) => (
-                      <View key={exercise.exerciseId} style={styles.performanceExercise}>
-                        <Text style={[styles.performanceExerciseName, { color: colors.text }]}>
-                          {exercise.exerciseName}
-                        </Text>
-                        <View style={styles.performanceSets}>
-                          {exercise.sets.map((set) => (
-                            <Text key={`${exercise.exerciseId}_${set.setNumber}`} style={[styles.performanceSetText, { color: colors.textSecondary }]}>
-                              {formatSetPerformance(set)}
-                            </Text>
-                          ))}
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              )}
-
-              <SheetActions style={styles.actions}>
-                <PrimaryButton
-                  title="Change Session"
-                  onPress={() => setEditing(true)}
-                  variant="primary"
-                  style={styles.actionButton}
-                  accessibilityLabel="Change session"
-                  accessibilityHint="Opens split choices for this day"
-                />
-                {entry.status === GymStatus.WENT && (
-                  <PrimaryButton
-                    title="Mark No Gym"
-                    onPress={handleSetNoGym}
-                    variant="secondary"
-                    style={styles.actionButton}
-                    accessibilityLabel="Mark day as no gym"
-                    accessibilityHint="Replaces the current session with no gym"
-                    />
-                  )}
-              </SheetActions>
-            </>
-          ) : (
-            <View style={styles.emptyContent}>
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No entry for this day</Text>
-              <Text style={[styles.emptyHint, { color: colors.textMuted }]}>This day is unanswered</Text>
+            <SheetActions style={styles.actions}>
               <PrimaryButton
-                title="Mark No Gym"
-                onPress={handleSetNoGym}
-                variant="secondary"
-                style={styles.markButton}
-                accessibilityLabel="Mark this day as no gym"
+                title="Change Session"
+                onPress={() => setEditing(true)}
+                variant="primary"
+                style={styles.actionButton}
+                accessibilityLabel="Change session"
+                accessibilityHint="Opens split choices for this day"
               />
-            </View>
+              {entry.status === GymStatus.WENT && (
+                <PrimaryButton
+                  title="Mark No Gym"
+                  onPress={handleSetNoGym}
+                  variant="secondary"
+                  style={styles.actionButton}
+                  accessibilityLabel="Mark day as no gym"
+                  accessibilityHint="Replaces the current session with no gym"
+                  />
+                )}
+            </SheetActions>
+          ) : (
+            <PrimaryButton
+              title="Mark No Gym"
+              onPress={handleSetNoGym}
+              variant="secondary"
+              style={styles.markButton}
+              accessibilityLabel="Mark this day as no gym"
+            />
           )}
         </View>
       </SafeAreaView>
@@ -431,6 +439,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textAlign: 'center',
     marginBottom: 8,
+    paddingHorizontal: DESIGN_SYSTEM.sheet.horizontalPadding,
+  },
+  detailScroll: {
+    maxHeight: 400,
+    paddingHorizontal: DESIGN_SYSTEM.sheet.horizontalPadding,
   },
   label: {
     ...sectionHeadingTextStyle,
@@ -495,6 +508,11 @@ const styles = StyleSheet.create({
   },
   editOptions: {
     gap: 10,
+    width: '100%',
+    paddingBottom: 16,
+  },
+  editScroll: {
+    maxHeight: 320,
     width: '100%',
     marginBottom: 16,
   },

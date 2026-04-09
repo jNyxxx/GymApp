@@ -30,7 +30,7 @@ export function useHomeViewModel() {
   });
   const quickLogBlockedMessage =
     quickLogPolicy.blockedReason === 'already-logged-for-effective-day'
-      ? 'You already logged a session today! Tap your session card above to edit it.'
+      ? 'You already logged a gym session today! Tap your session card above to edit it.'
       : '';
 
   const confirmAndSaveWentGym = async (

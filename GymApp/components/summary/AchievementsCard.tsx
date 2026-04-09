@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../../context/ThemeContext';
 import { ACHIEVEMENTS } from '../../models/Achievement';
 import { AchievementService } from '../../services/AchievementService';
@@ -57,9 +58,11 @@ export default function AchievementsCard() {
                 !isUnlocked && styles.lockedItem,
               ]}
             >
-              <Text style={[styles.emoji, !isUnlocked && styles.lockedEmoji]}>
-                {isUnlocked ? achievement.emoji : '🔒'}
-              </Text>
+              <Ionicons
+                name={isUnlocked ? (achievement.icon as any) : 'lock-closed-outline'}
+                size={24}
+                color={isUnlocked ? colors.primary : colors.textMuted}
+              />
               <Text
                 style={[
                   styles.achievementTitle,
@@ -119,12 +122,6 @@ const styles = StyleSheet.create({
   },
   lockedItem: {
     opacity: 0.5,
-  },
-  emoji: {
-    fontSize: 24,
-  },
-  lockedEmoji: {
-    fontSize: 18,
   },
   achievementTitle: {
     fontSize: 11,

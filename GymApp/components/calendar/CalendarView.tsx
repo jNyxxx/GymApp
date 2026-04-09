@@ -1,23 +1,19 @@
-import React, { useState } from 'react';
-import { ScrollView, StyleSheet, View, RefreshControl, TouchableOpacity, Text } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useRef } from 'react';
+import { ScrollView, StyleSheet, View, RefreshControl } from 'react-native';
 import { useCalendarViewModel } from '../../viewModels/CalendarViewModel';
 import CalendarHeader from '../../components/calendar/CalendarHeader';
 import CalendarGrid from '../../components/calendar/CalendarGrid';
 import DayDetailSheet from '../../components/calendar/DayDetailSheet';
-import AddSessionSheet from '../../components/calendar/AddSessionSheet';
 import { useColors, useTheme } from '../../context/ThemeContext';
 import { useGymStore } from '../../context/GymStore';
 import { cardSurfaceStyle, screenContentStyle } from '../../constants/DesignSystem';
-import EmptyState from '../shared/EmptyState';
 
 export default function CalendarView() {
   const colors = useColors();
   const { settings } = useTheme();
   const refreshing = useGymStore((state) => state.refreshing);
   const storeRefresh = useGymStore((state) => state.refresh);
-  const [showAddSession, setShowAddSession] = useState(false);
-  
+
   const {
     currentMonth,
     entries,
@@ -40,8 +36,40 @@ export default function CalendarView() {
     refresh();
   };
 
+  // Swipe gesture for month navigation
+  const swipeThreshold = 100;
+  const touchStartRef = useRef({ x: 0, y: 0, time: 0 });
+  const isNavigatingRef = useRef(false);
+
+  const handleTouchStart = (e: any) => {
+    touchStartRef.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY, time: Date.now() };
+  };
+
+  const handleTouchEnd = (e: any) => {
+    if (isNavigatingRef.current) return;
+
+    const dx = e.nativeEvent.pageX - touchStartRef.current.x;
+    const dy = e.nativeEvent.pageY - touchStartRef.current.y;
+    const duration = Date.now() - touchStartRef.current.time;
+
+    // Only trigger on deliberate horizontal swipes (not quick taps)
+    if (duration > 100 && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > swipeThreshold) {
+      isNavigatingRef.current = true;
+      if (dx > 0) {
+        goToPrevMonth();
+      } else {
+        goToNextMonth();
+      }
+      setTimeout(() => { isNavigatingRef.current = false; }, 500);
+    }
+  };
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.bg }]}>
+    <View
+      style={[styles.container, { backgroundColor: colors.bg }]}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -63,7 +91,7 @@ export default function CalendarView() {
           onNext={goToNextMonth}
         />
 
-        <View 
+        <View
           style={[styles.calendarCard, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}
           accessibilityRole="grid"
           accessibilityLabel={`Calendar for ${monthLabel}`}
@@ -75,16 +103,6 @@ export default function CalendarView() {
             onDayTap={openDayDetail}
           />
         </View>
-
-        {entries.length === 0 && (
-          <EmptyState
-            iconName="calendar-clear-outline"
-            title="No sessions this month"
-            description="Add a custom session or log from Home to fill out your calendar."
-            actionLabel="Add Session"
-            onAction={() => setShowAddSession(true)}
-          />
-        )}
       </ScrollView>
 
       <DayDetailSheet
@@ -98,27 +116,6 @@ export default function CalendarView() {
           closeDayDetail();
         }}
       />
-
-      <AddSessionSheet
-        visible={showAddSession}
-        onClose={() => setShowAddSession(false)}
-        onSaved={async () => {
-          await storeRefresh(settings.resetHour, settings.resetMinute);
-          await refresh();
-          setShowAddSession(false);
-        }}
-      />
-
-      {/* Floating Action Button */}
-      <TouchableOpacity
-        style={[styles.fab, { backgroundColor: colors.primary }]}
-        onPress={() => setShowAddSession(true)}
-        accessibilityLabel="Add custom session"
-        accessibilityHint="Opens the add session sheet"
-        accessibilityRole="button"
-      >
-        <Ionicons name="add" size={28} color="#FFFFFF" />
-      </TouchableOpacity>
     </View>
   );
 }
@@ -129,23 +126,10 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     ...screenContentStyle,
+    flexGrow: 1,
+    justifyContent: 'center',
   },
   calendarCard: {
     ...cardSurfaceStyle,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
   },
 });
